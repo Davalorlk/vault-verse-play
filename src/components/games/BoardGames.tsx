@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { GameRoom } from './GameRoom';
-import { Chess, Crown, Grid3X3, Gamepad2, Target } from 'lucide-react';
+import { Crown, Grid3X3, Gamepad2, Target } from 'lucide-react';
 
 interface Game {
   id: string;
@@ -27,7 +27,7 @@ export const BoardGames = ({ user }: BoardGamesProps) => {
     {
       id: 'chess',
       name: 'Chess',
-      icon: <Chess className="h-8 w-8" />,
+      icon: <Crown className="h-8 w-8" />,
       description: 'The classic strategy game of kings and queens',
       players: '2 Players',
       difficulty: 'Hard',
