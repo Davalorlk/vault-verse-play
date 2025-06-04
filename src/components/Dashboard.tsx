@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -9,6 +8,7 @@ import { Leaderboard } from '@/components/Leaderboard';
 import { UserProfile } from '@/components/UserProfile';
 import { GlobalChat } from '@/components/chat/GlobalChat';
 import { BoardGames } from '@/components/games/BoardGames';
+import { Shop } from '@/components/shop/Shop';
 import { 
   Brain, 
   Trophy, 
@@ -20,7 +20,8 @@ import {
   Lock,
   Crown,
   MessageCircle,
-  Gamepad2
+  Gamepad2,
+  Gift
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -35,6 +36,15 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
   const updateUserStats = (newStats: any) => {
     setUserStats({ ...userStats, ...newStats });
     sessionStorage.setItem('mindVaultUser', JSON.stringify({ ...userStats, ...newStats }));
+  };
+
+  const handlePurchase = (item: any) => {
+    if (userStats.coins >= item.price) {
+      const newCoins = userStats.coins - item.price;
+      updateUserStats({ coins: newCoins });
+      console.log(`Purchased ${item.name} for ${item.price} coins`);
+      // You could add a toast notification here
+    }
   };
 
   return (
@@ -85,7 +95,7 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
         {/* Main Content */}
         <div className="container mx-auto px-4 py-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5 bg-slate-800 border-slate-700">
+            <TabsList className="grid w-full grid-cols-6 bg-slate-800 border-slate-700">
               <TabsTrigger value="puzzles" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900">
                 <Brain className="h-4 w-4 mr-2" />
                 Puzzles
@@ -93,6 +103,10 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
               <TabsTrigger value="games" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900">
                 <Gamepad2 className="h-4 w-4 mr-2" />
                 Games
+              </TabsTrigger>
+              <TabsTrigger value="shop" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900">
+                <Gift className="h-4 w-4 mr-2" />
+                Shop
               </TabsTrigger>
               <TabsTrigger value="chat" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900">
                 <MessageCircle className="h-4 w-4 mr-2" />
@@ -173,6 +187,10 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
 
             <TabsContent value="games">
               <BoardGames user={userStats} />
+            </TabsContent>
+
+            <TabsContent value="shop">
+              <Shop user={userStats} onPurchase={handlePurchase} />
             </TabsContent>
 
             <TabsContent value="chat">
