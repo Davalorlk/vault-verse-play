@@ -7,6 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PuzzleGame } from '@/components/puzzles/PuzzleGame';
 import { Leaderboard } from '@/components/Leaderboard';
 import { UserProfile } from '@/components/UserProfile';
+import { GlobalChat } from '@/components/chat/GlobalChat';
+import { BoardGames } from '@/components/games/BoardGames';
 import { 
   Brain, 
   Trophy, 
@@ -16,7 +18,9 @@ import {
   Star, 
   Target,
   Lock,
-  Crown
+  Crown,
+  MessageCircle,
+  Gamepad2
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -81,10 +85,18 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
         {/* Main Content */}
         <div className="container mx-auto px-4 py-8">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3 bg-slate-800 border-slate-700">
+            <TabsList className="grid w-full grid-cols-5 bg-slate-800 border-slate-700">
               <TabsTrigger value="puzzles" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900">
                 <Brain className="h-4 w-4 mr-2" />
                 Puzzles
+              </TabsTrigger>
+              <TabsTrigger value="games" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900">
+                <Gamepad2 className="h-4 w-4 mr-2" />
+                Games
+              </TabsTrigger>
+              <TabsTrigger value="chat" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900">
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Chat
               </TabsTrigger>
               <TabsTrigger value="leaderboard" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900">
                 <Trophy className="h-4 w-4 mr-2" />
@@ -157,6 +169,14 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
 
             <TabsContent value="puzzles">
               <PuzzleGame user={userStats} onUpdateUser={updateUserStats} />
+            </TabsContent>
+
+            <TabsContent value="games">
+              <BoardGames user={userStats} />
+            </TabsContent>
+
+            <TabsContent value="chat">
+              <GlobalChat user={userStats} />
             </TabsContent>
 
             <TabsContent value="leaderboard">
