@@ -1,7 +1,5 @@
-// Hangman game logic for two players, with real-time state sync via Firebase (simplified demo)
+// Hangman game logic for two players (simplified demo)
 import { useEffect, useState } from 'react';
-import { db } from '@/lib/firebase';
-import { ref, onValue, set } from 'firebase/database';
 
 const WORDS = ['react', 'firebase', 'hangman', 'puzzle', 'logic'];
 
@@ -14,15 +12,15 @@ export function Hangman({ roomName, user, isMyTurn, playMode }: { roomName: stri
   const [guesses, setGuesses] = useState<string[]>([]);
   const [wrong, setWrong] = useState(0);
   const [input, setInput] = useState('');
+  // For demo: two rounds, one for each player
+  const [round, setRound] = useState(1); // 1 or 2
+  const [winner, setWinner] = useState<string | null>(null);
+  const [wordEntry, setWordEntry] = useState('');
+  const [wordSet, setWordSet] = useState(false);
 
   useEffect(() => {
     if (playMode === 'player') {
-      const wordRef = ref(db, `rooms/${roomName}/games/hangman/word`);
-      const guessesRef = ref(db, `rooms/${roomName}/games/hangman/guesses`);
-      const wrongRef = ref(db, `rooms/${roomName}/games/hangman/wrong`);
-      onValue(wordRef, snap => { if (snap.exists()) setWord(snap.val()); });
-      onValue(guessesRef, snap => { if (snap.exists()) setGuesses(snap.val()); });
-      onValue(wrongRef, snap => { if (snap.exists()) setWrong(snap.val()); });
+      // Firebase logic removed
     } else {
       setWord(getRandomWord());
       setGuesses([]);
@@ -35,8 +33,8 @@ export function Hangman({ roomName, user, isMyTurn, playMode }: { roomName: stri
     if (guesses.includes(input)) return;
     if (playMode === 'player') {
       const newGuesses = [...guesses, input];
-      set(ref(db, `rooms/${roomName}/games/hangman/guesses`), newGuesses);
-      if (!word.includes(input)) set(ref(db, `rooms/${roomName}/games/hangman/wrong`), wrong + 1);
+      // Firebase logic removed
+      if (!word.includes(input)) setWrong(wrong + 1);
       setInput('');
     } else {
       const newGuesses = [...guesses, input];
@@ -65,14 +63,116 @@ export function Hangman({ roomName, user, isMyTurn, playMode }: { roomName: stri
     }
   }, [guesses, playMode, lost, won, isMyTurn, word]);
 
+  // Reset for next round
+  function startNextRound() {
+    setGuesses([]);
+    setWrong(0);
+    setInput('');
+    setWord('');
+    setWordEntry('');
+    setWordSet(false);
+    setWinner(null);
+    setRound(r => r === 1 ? 2 : 1);
+  }
+
+  // Handle word entry for each round
+  function handleSetWord() {
+    if (!wordEntry || wordEntry.length < 2) return;
+    setWord(wordEntry.toLowerCase());
+    setWordSet(true);
+  }
+
+  // Determine who is the guesser and who is the word-setter
+  const isWordSetter = (round === 1 && user?.player === 1) || (round === 2 && user?.player === 2);
+  const isGuesser = !isWordSetter;
+
+  // Win/loss logic for two players
+  useEffect(() => {
+    if (!wordSet) return;
+    if (word && word.length && (wrong >= 6 || word.split('').every(l => guesses.includes(l)))) {
+      if (word.split('').every(l => guesses.includes(l))) {
+        setWinner(isGuesser ? String(round) : null);
+      } else if (wrong >= 6) {
+        setWinner(isWordSetter ? String(round) : null);
+      }
+    }
+  }, [guesses, wrong, word, wordSet, isGuesser, isWordSetter, round]);
+
+  function renderHangmanFigure(wrong: number) {
+    // Draw hangman with SVG, dots for incomplete
+    return (
+      <svg width="120" height="160" viewBox="0 0 120 160">
+        {/* Gallows */}
+        <line x1="10" y1="150" x2="110" y2="150" stroke="#222" strokeWidth="3" />
+        <line x1="30" y1="150" x2="30" y2="20" stroke="#222" strokeWidth="3" />
+        <line x1="30" y1="20" x2="80" y2="20" stroke="#222" strokeWidth="3" />
+        <line x1="80" y1="20" x2="80" y2="40" stroke="#222" strokeWidth="3" />
+        {/* Head */}
+        {wrong > 0 ? <circle cx="80" cy="55" r="15" stroke="#222" strokeWidth="3" fill="none" /> : <circle cx="80" cy="55" r="15" stroke="#aaa" strokeWidth="2" fill="none" strokeDasharray="3 5" />}
+        {/* Body */}
+        {wrong > 1 ? <line x1="80" y1="70" x2="80" y2="110" stroke="#222" strokeWidth="3" /> : <line x1="80" y1="70" x2="80" y2="110" stroke="#aaa" strokeWidth="2" strokeDasharray="3 5" />}
+        {/* Left Arm */}
+        {wrong > 2 ? <line x1="80" y1="80" x2="60" y2="100" stroke="#222" strokeWidth="3" /> : <line x1="80" y1="80" x2="60" y2="100" stroke="#aaa" strokeWidth="2" strokeDasharray="3 5" />}
+        {/* Right Arm */}
+        {wrong > 3 ? <line x1="80" y1="80" x2="100" y2="100" stroke="#222" strokeWidth="3" /> : <line x1="80" y1="80" x2="100" y2="100" stroke="#aaa" strokeWidth="2" strokeDasharray="3 5" />}
+        {/* Left Leg */}
+        {wrong > 4 ? <line x1="80" y1="110" x2="65" y2="140" stroke="#222" strokeWidth="3" /> : <line x1="80" y1="110" x2="65" y2="140" stroke="#aaa" strokeWidth="2" strokeDasharray="3 5" />}
+        {/* Right Leg */}
+        {wrong > 5 ? <line x1="80" y1="110" x2="95" y2="140" stroke="#222" strokeWidth="3" /> : <line x1="80" y1="110" x2="95" y2="140" stroke="#aaa" strokeWidth="2" strokeDasharray="3 5" />}
+      </svg>
+    );
+  }
+
   return (
-    <div className="flex flex-col items-center justify-center w-full h-full space-y-2">
-      <div className="text-2xl tracking-widest font-mono mb-2">{display}</div>
-      <div>Wrong guesses: {wrong}/6</div>
-      <input value={input} onChange={e => setInput(e.target.value)} maxLength={1} className="border px-2" disabled={!isMyTurn || lost || won} />
-      <button onClick={handleGuess} className="ml-2 bg-yellow-400 px-2 rounded shadow hover:bg-yellow-500 transition" disabled={!isMyTurn || lost || won}>Guess</button>
-      {lost && <div className="text-red-500 font-bold text-lg">Game Over! Word was: {word}</div>}
-      {won && <div className="text-green-500 font-bold text-lg">You Win!</div>}
+    <div className="flex flex-col md:flex-row w-full h-full items-stretch">
+      {/* Instructions */}
+      <div className="flex-1 flex flex-col items-center justify-center bg-white text-black p-6 border-r border-gray-300">
+        <div className="text-2xl font-bold mb-2">THE HANGMAN</div>
+        <div className="mb-4 text-center">
+          One player thinks of a word or phrase, and the other player tries to guess.<br />
+          Make sure to black out extras if player guesses the wrong word.<br />
+          The line is filled on hangman, if hangman diagram has completed, the guesser has lost the game.
+        </div>
+        <div className="mt-8 text-center font-semibold">ENJOY THE GAME AND HAVE FUN :)</div>
+      </div>
+      {/* Game boards */}
+      <div className="flex-[2] flex flex-col items-center justify-center bg-slate-900 text-white p-6">
+        {[1,2].map((r) => (
+          <div key={r} className="flex flex-col items-center mb-8 w-full max-w-md">
+            <div className="flex flex-row justify-between w-full mb-2">
+              <div className="flex gap-2">
+                {Array.from({length: 8}).map((_,i) => <span key={i} className="inline-block w-6 border-b-2 border-white text-lg text-center">{(round===r && wordSet && word[i] && (guesses.includes(word[i]) || winner)) ? word[i] : '\u00A0'}</span>)}
+              </div>
+              <div className="ml-4">WINNER: <span className="font-bold">{winner === String(r) ? (user?.displayName || 'Player '+r) : ''}</span></div>
+            </div>
+            <div className="flex flex-row items-center gap-8">
+              {renderHangmanFigure(round === r && wordSet ? wrong : 0)}
+              <div className="flex flex-col items-center">
+                <div className="mb-2">{Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map(l => (
+                  <span key={l} className={`inline-block w-5 text-center mx-0.5 ${guesses.includes(l.toLowerCase()) && round===r && wordSet ? 'text-red-400 line-through' : ''}`}>{l}</span>
+                ))}</div>
+                {round === r && !wordSet && isWordSetter && (
+                  <div className="flex gap-2 mt-2">
+                    <input value={wordEntry} onChange={e => setWordEntry(e.target.value.replace(/[^a-zA-Z]/g, '').toLowerCase())} maxLength={8} className="border px-2 text-black" placeholder="Enter word" />
+                    <button onClick={handleSetWord} className="bg-green-400 px-2 rounded shadow hover:bg-green-500 transition">Set Word</button>
+                  </div>
+                )}
+                {round === r && wordSet && !won && !lost && isGuesser && (
+                  <div className="flex gap-2 mt-2">
+                    <input value={input} onChange={e => setInput(e.target.value.toLowerCase())} maxLength={1} className="border px-2 text-black" disabled={!isGuesser || lost || won} />
+                    <button onClick={handleGuess} className="bg-yellow-400 px-2 rounded shadow hover:bg-yellow-500 transition" disabled={!isGuesser || lost || won}>Guess</button>
+                  </div>
+                )}
+                {round === r && wordSet && lost && <div className="text-red-400 font-bold mt-2">Game Over! Word was: {word}</div>}
+                {round === r && wordSet && won && <div className="text-green-400 font-bold mt-2">You Win!</div>}
+                {round === r && wordSet && (won || lost) && (
+                  <button className="mt-2 bg-blue-500 text-white px-3 py-1 rounded" onClick={startNextRound}>Next Round</button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -2,8 +2,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Crown, Trophy, Medal, Target } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { ref, onValue } from 'firebase/database';
-import { db } from '@/lib/firebase';
 
 interface LeaderboardProps {
   currentUser: any;
@@ -15,19 +13,18 @@ export const Leaderboard = ({ currentUser }: LeaderboardProps) => {
   const [totalPlayers, setTotalPlayers] = useState(0);
 
   useEffect(() => {
-    // Real-time leaderboard
-    const usersRef = ref(db, 'users');
-    onValue(usersRef, snap => {
-      const users = snap.val() ? Object.values(snap.val()) : [];
-      const sorted = users.sort((a: any, b: any) => b.score - a.score).slice(0, 100);
-      setLeaderboard(sorted);
-      setTotalPlayers(users.length);
-    });
-    // Real-time online count
-    const presenceRef = ref(db, 'presence');
-    onValue(presenceRef, snap => {
-      setOnlineCount(snap.val() ? Object.keys(snap.val()).length : 0);
-    });
+    fetch('/api/leaderboard')
+      .then(res => res.json())
+      .then(data => {
+        setLeaderboard(data);
+        setTotalPlayers(data.length);
+      })
+      .catch(() => {
+        setLeaderboard([]);
+        setTotalPlayers(0);
+      });
+    // Optionally, listen for real-time online count via Socket.IO
+    // setOnlineCount(...) from presence
   }, []);
 
   const getRankIcon = (position: number) => {

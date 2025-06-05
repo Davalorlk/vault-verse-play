@@ -1,7 +1,5 @@
-// Ludo game logic for two players, with real-time state sync via Firebase (simplified demo)
+// Ludo game logic for two players (simplified demo)
 import { useEffect, useState } from 'react';
-import { db } from '@/lib/firebase';
-import { ref, onValue, set } from 'firebase/database';
 
 const initialPositions = [0, 0]; // [player1, player2] positions
 
@@ -36,19 +34,8 @@ export function Ludo({ roomName, user, isMyTurn, playMode }: { roomName: string,
   const [dice, setDice] = useState<number|null>(null);
 
   useEffect(() => {
-    if (playMode === 'player') {
-      const posRef = ref(db, `rooms/${roomName}/games/ludo/positions`);
-      const turnRef = ref(db, `rooms/${roomName}/games/ludo/turn`);
-      onValue(posRef, snap => {
-        if (snap.exists()) setPositions(snap.val());
-      });
-      onValue(turnRef, snap => {
-        if (snap.exists()) setTurn(snap.val());
-      });
-    } else {
-      setPositions(initialPositions);
-      setTurn(0);
-    }
+    setPositions(initialPositions);
+    setTurn(0);
   }, [roomName, playMode]);
 
   function rollDice() {
@@ -58,8 +45,8 @@ export function Ludo({ roomName, user, isMyTurn, playMode }: { roomName: string,
       setDice(roll);
       const newPositions = [...positions];
       newPositions[turn] = Math.min(newPositions[turn] + roll, 20);
-      set(ref(db, `rooms/${roomName}/games/ludo/positions`), newPositions);
-      set(ref(db, `rooms/${roomName}/games/ludo/turn`), getNextTurn(turn));
+      setPositions(newPositions);
+      setTurn(getNextTurn(turn));
     } else {
       if (turn !== 0) return;
       const roll = getBestLudoMove(positions, 0);
@@ -118,10 +105,6 @@ export function Ludo({ roomName, user, isMyTurn, playMode }: { roomName: string,
             setPositions(initialPositions);
             setTurn(0);
             setDice(null);
-            if (playMode === 'player') {
-              set(ref(db, `rooms/${roomName}/games/ludo/positions`), initialPositions);
-              set(ref(db, `rooms/${roomName}/games/ludo/turn`), 0);
-            }
           }}
         >Replay</button>
       )}

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { X, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
+import { v4 as uuidv4 } from 'uuid';
 
 interface RegisterFormProps {
   onRegister: (userData: any) => void;
@@ -27,44 +27,49 @@ export const RegisterForm = ({ onRegister, onClose, onSwitchToLogin }: RegisterF
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      if (!username || !password || !confirmPassword) {
-        toast.error('Please fill in all fields');
-        setIsLoading(false);
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        toast.error('Passwords do not match');
-        setIsLoading(false);
-        return;
-      }
-
-      if (password.length < 6) {
-        toast.error('Password must be at least 6 characters');
-        setIsLoading(false);
-        return;
-      }
-
-      const userData = {
-        id: Date.now(),
-        username,
-        displayName: username,
-        avatar: selectedAvatar,
-        level: 1,
-        coins: 100,
-        experience: 0,
-        puzzlesSolved: 0,
-        rank: 'Novice',
-        achievements: ['🏆 Vault Explorer'],
-        createdAt: new Date().toISOString()
-      };
-      
-      onRegister(userData);
-      toast.success(`Welcome to Mind Vault, ${username}!`);
+    if (!username || !password || !confirmPassword) {
+      toast.error('Please fill in all fields');
       setIsLoading(false);
-    }, 1000);
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match');
+      setIsLoading(false);
+      return;
+    }
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      setIsLoading(false);
+      return;
+    }
+
+    const uid = uuidv4();
+    const userData = {
+      uid,
+      username,
+      displayName: username,
+      avatar: selectedAvatar,
+      rank: 'Novice',
+      coins: 100,
+      experience: 0,
+      puzzlesSolved: 0,
+      achievements: ['🏆 Vault Explorer'],
+      createdAt: new Date().toISOString()
+    };
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+      if (!res.ok) throw new Error('Registration failed');
+      const registeredUser = await res.json();
+      onRegister(registeredUser);
+      toast.success(`Welcome to Mind Vault, ${username}!`);
+    } catch (err: any) {
+      toast.error(err.message || 'Registration failed');
+    }
+    setIsLoading(false);
   };
 
   return (

@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import { ref, onValue } from 'firebase/database';
-import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -67,15 +65,6 @@ export const BoardGames = ({ user }: BoardGamesProps) => {
       online: 743
     },
     {
-      id: 'ludo',
-      name: 'Ludo',
-      icon: <Gamepad2 className="h-8 w-8" />,
-      description: 'Race your pieces to the finish',
-      players: '2-4 Players',
-      difficulty: 'Easy',
-      online: 623
-    },
-    {
       id: 'dotandbox',
       name: 'Dot and Box',
       icon: <CircleDot className="h-8 w-8" />,
@@ -122,14 +111,6 @@ export const BoardGames = ({ user }: BoardGamesProps) => {
     }
   ];
 
-  useEffect(() => {
-    // Listen for real-time total played for each game
-    const statsRef = ref(db, 'gameStats');
-    onValue(statsRef, snap => {
-      setTotalPlayed(snap.val() || {});
-    });
-  }, []);
-
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'Easy': return 'bg-green-500/20 text-green-400';
@@ -162,7 +143,7 @@ export const BoardGames = ({ user }: BoardGamesProps) => {
         <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">Board Games Arena</h2>
         <p className="text-slate-400">Challenge players or play against the computer in a beautiful, modern arena</p>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full max-w-6xl">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full max-w-7xl mx-auto px-2 md:px-6">
         {games.map((game) => (
           <Card 
             key={game.id} 

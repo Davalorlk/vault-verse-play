@@ -1,7 +1,5 @@
-// Gomoku game logic for two players, with real-time state sync via Firebase (simplified demo)
+// Gomoku game logic for two players (simplified demo)
 import { useEffect, useState } from 'react';
-import { db } from '@/lib/firebase';
-import { ref, onValue, set } from 'firebase/database';
 
 const SIZE = 10;
 const initialBoard = Array.from({ length: SIZE }, () => Array(SIZE).fill(''));
@@ -35,14 +33,7 @@ export function Gomoku({ roomName, user, isMyTurn, playMode }: { roomName: strin
 
   useEffect(() => {
     if (playMode === 'player') {
-      const boardRef = ref(db, `rooms/${roomName}/games/gomoku/board`);
-      const turnRef = ref(db, `rooms/${roomName}/games/gomoku/turn`);
-      onValue(boardRef, snap => {
-        if (snap.exists()) setBoard(snap.val());
-      });
-      onValue(turnRef, snap => {
-        if (snap.exists()) setTurn(snap.val());
-      });
+      // Firebase logic removed
     } else {
       setBoard(initialBoard);
       setTurn('X');
@@ -74,8 +65,7 @@ export function Gomoku({ roomName, user, isMyTurn, playMode }: { roomName: strin
       if (!isMyTurn || board[row][col]) return;
       const newBoard = board.map(arr => [...arr]);
       newBoard[row][col] = turn;
-      set(ref(db, `rooms/${roomName}/games/gomoku/board`), newBoard);
-      set(ref(db, `rooms/${roomName}/games/gomoku/turn`), getNextTurn(turn));
+      // Firebase logic removed
     } else {
       if (turn !== 'X' || board[row][col]) return;
       const newBoard = board.map(arr => [...arr]);

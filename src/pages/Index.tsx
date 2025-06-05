@@ -6,8 +6,6 @@ import { LoginForm } from '@/components/auth/LoginForm';
 import { RegisterForm } from '@/components/auth/RegisterForm';
 import { Dashboard } from '@/components/Dashboard';
 import { Crown, Trophy, Users, Brain, Sparkles } from 'lucide-react';
-import { ref, onValue } from 'firebase/database';
-import { db } from '@/lib/firebase';
 
 const Index = () => {
   const [user, setUser] = useState(null);
@@ -22,19 +20,6 @@ const Index = () => {
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
-  }, []);
-
-  useEffect(() => {
-    // Real-time online and total players
-    const usersRef = ref(db, 'users');
-    onValue(usersRef, snap => {
-      const users = snap.val() ? Object.values(snap.val()) : [];
-      setTotalPlayers(users.length);
-    });
-    const presenceRef = ref(db, 'presence');
-    onValue(presenceRef, snap => {
-      setOnlineCount(snap.val() ? Object.keys(snap.val()).length : 0);
-    });
   }, []);
 
   const handleLogin = (userData) => {
@@ -59,13 +44,8 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
-      {/* Background Effects */}
-      <div className="absolute inset-0 opacity-20" style={{
-        backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-      }}></div>
-      
-      <div className="relative z-10 container mx-auto px-4 py-8">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 w-full">
+      <div className="w-full max-w-3xl px-2 md:px-6 flex flex-col gap-8 items-center justify-center">
         {/* Header */}
         <div className="text-center mb-8 md:mb-12">
           <div className="flex items-center justify-center mb-4 md:mb-6">

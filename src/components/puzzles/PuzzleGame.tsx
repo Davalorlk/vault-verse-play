@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,129 +7,128 @@ import { Progress } from '@/components/ui/progress';
 import { CheckCircle, XCircle, Brain, Zap, Gift } from 'lucide-react';
 import { toast } from 'sonner';
 
+interface Puzzle {
+  id: number;
+  type: string;
+  question: string;
+  answer: string;
+  category: string;
+  difficulty: string;
+  coins: number;
+  experience: number;
+}
+
 interface PuzzleGameProps {
   user: any;
   onUpdateUser: (stats: any) => void;
 }
 
-const samplePuzzles = [
-  {
-    id: 1,
-    type: 'sequence',
-    question: 'What comes next in the sequence: 2, 4, 8, 16, ?',
-    answer: '32',
-    category: 'Math',
-    difficulty: 'Easy',
-    coins: 10,
-    experience: 25
-  },
-  {
-    id: 2,
-    type: 'trivia',
-    question: 'What is the capital of France?',
-    answer: 'Paris',
-    category: 'Geography',
-    difficulty: 'Easy',
-    coins: 10,
-    experience: 25
-  },
-  {
-    id: 3,
-    type: 'math',
-    question: 'If x + 5 = 12, what is the value of x?',
-    answer: '7',
-    category: 'Math',
-    difficulty: 'Easy',
-    coins: 15,
-    experience: 30
-  },
-  {
-    id: 4,
-    type: 'sequence',
-    question: 'Complete the sequence: 1, 1, 2, 3, 5, 8, ?',
-    answer: '13',
-    category: 'Math',
-    difficulty: 'Medium',
-    coins: 20,
-    experience: 40
-  },
-  {
-    id: 5,
-    type: 'word',
-    question: 'Unscramble this word: TPUCOMRE',
-    answer: 'COMPUTER',
-    category: 'Word',
-    difficulty: 'Medium',
-    coins: 15,
-    experience: 35
-  }
-];
+// Helper to parse puzzle.txt format
+function parsePuzzles(raw: string): Puzzle[] {
+  const blocks = raw.split(/---+/g).map(b => b.trim()).filter(Boolean);
+  let id = 1;
+  return blocks.map(block => {
+    const typeMatch = block.match(/\*\*Type:\*\*\s*(.+)/);
+    const questionMatch = block.match(/\*\*Type:\*\*.+?\n([\s\S]+?)\n\*\*Solution:/);
+    const answerMatch = block.match(/\*\*Solution:\*\*\s*(.+)/);
+    const type = typeMatch ? typeMatch[1].trim() : 'Unknown';
+    const question = questionMatch ? questionMatch[1].replace(/\n/g, ' ').trim() : '';
+    const answer = answerMatch ? answerMatch[1].trim() : '';
+    // Simple heuristics for category/difficulty/coins/experience
+    let category = 'General', difficulty = 'Easy', coins = 10, experience = 25;
+    if (/math/i.test(type)) category = 'Math';
+    if (/word/i.test(type)) category = 'Word';
+    if (/trivia/i.test(type)) category = 'Trivia';
+    if (/logic/i.test(type)) category = 'Logic';
+    if (/sequence/i.test(type)) difficulty = 'Medium';
+    if (/equation/i.test(type)) difficulty = 'Medium';
+    if (/scramble/i.test(type)) difficulty = 'Medium';
+    if (/riddle/i.test(type)) difficulty = 'Hard';
+    if (difficulty === 'Medium') { coins = 15; experience = 35; }
+    if (difficulty === 'Hard') { coins = 25; experience = 50; }
+    return {
+      id: id++,
+      type,
+      question,
+      answer,
+      category,
+      difficulty,
+      coins,
+      experience
+    };
+  });
+}
 
 export const PuzzleGame = ({ user, onUpdateUser }: PuzzleGameProps) => {
+  const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
   const [currentPuzzleIndex, setCurrentPuzzleIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [solvedPuzzles, setSolvedPuzzles] = useState<number[]>([]);
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const currentPuzzle = samplePuzzles[currentPuzzleIndex];
-  const progress = (solvedPuzzles.length / samplePuzzles.length) * 100;
-
+  // Load and parse puzzles from puzzle.txt
   useEffect(() => {
-    // Load solved puzzles from localStorage
+    fetch('/puzzle.txt')
+      .then(res => res.text())
+      .then(text => {
+        const parsed = parsePuzzles(text);
+        setPuzzles(parsed);
+        setLoading(false);
+      });
+  }, []);
+
+  // Load solved puzzles from localStorage
+  useEffect(() => {
     const saved = localStorage.getItem(`mindVault_solved_${user.id}`);
     if (saved) {
       setSolvedPuzzles(JSON.parse(saved));
     }
   }, [user.id]);
 
+  // Find the next unsolved puzzle
+  const nextUnsolvedIndex = puzzles.findIndex(p => !solvedPuzzles.includes(p.id));
+  const allSolved = puzzles.length > 0 && solvedPuzzles.length >= puzzles.length;
+  const currentPuzzle = !allSolved && puzzles.length > 0 && nextUnsolvedIndex !== -1 ? puzzles[nextUnsolvedIndex] : null;
+  const progress = puzzles.length ? (solvedPuzzles.length / puzzles.length) * 100 : 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userAnswer.trim()) return;
-
+    if (!userAnswer.trim() || !currentPuzzle) return;
     setIsSubmitting(true);
-    
-    // Simulate processing time
     setTimeout(() => {
       const correct = userAnswer.toLowerCase().trim() === currentPuzzle.answer.toLowerCase();
       setIsCorrect(correct);
       setShowResult(true);
-
       if (correct && !solvedPuzzles.includes(currentPuzzle.id)) {
-        // Update user stats
         const newSolvedPuzzles = [...solvedPuzzles, currentPuzzle.id];
         setSolvedPuzzles(newSolvedPuzzles);
         localStorage.setItem(`mindVault_solved_${user.id}`, JSON.stringify(newSolvedPuzzles));
-
         const newCoins = user.coins + currentPuzzle.coins;
         const newExperience = user.experience + currentPuzzle.experience;
         const newPuzzlesSolved = user.puzzlesSolved + 1;
         const newLevel = Math.floor(newExperience / 100) + 1;
-
-        onUpdateUser({
-          coins: newCoins,
-          experience: newExperience,
-          puzzlesSolved: newPuzzlesSolved,
-          level: newLevel
-        });
-
+        onUpdateUser({ coins: newCoins, experience: newExperience, puzzlesSolved: newPuzzlesSolved, level: newLevel });
         toast.success(`Correct! +${currentPuzzle.coins} coins, +${currentPuzzle.experience} XP`);
       } else if (correct) {
         toast.info('You already solved this puzzle!');
       } else {
         toast.error('Incorrect answer. Try again!');
       }
-
       setIsSubmitting(false);
     }, 1000);
   };
 
   const nextPuzzle = () => {
-    setCurrentPuzzleIndex((prev) => (prev + 1) % samplePuzzles.length);
-    setUserAnswer('');
     setShowResult(false);
     setIsCorrect(false);
+    setUserAnswer('');
+    // Move to next unsolved puzzle
+    const nextIdx = puzzles.findIndex((p, i) => i > nextUnsolvedIndex && !solvedPuzzles.includes(p.id));
+    if (nextIdx !== -1) setCurrentPuzzleIndex(nextIdx);
+    else setCurrentPuzzleIndex(0); // fallback
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -142,18 +140,27 @@ export const PuzzleGame = ({ user, onUpdateUser }: PuzzleGameProps) => {
     }
   };
 
+  if (loading) return <div className="text-white">Loading puzzles...</div>;
+  if (allSolved) return (
+    <div className="flex flex-col items-center justify-center h-96">
+      <CheckCircle className="h-16 w-16 text-green-400 mb-4" />
+      <div className="text-2xl font-bold text-white mb-2">Congratulations!</div>
+      <div className="text-lg text-slate-300 mb-4">You've solved all available puzzles.</div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Daily Challenges</h2>
         <div className="flex items-center space-x-4">
           <div className="text-sm text-slate-400">
-            Progress: {solvedPuzzles.length}/{samplePuzzles.length}
+            Progress: {solvedPuzzles.length}/{puzzles.length}
           </div>
           <Progress value={progress} className="w-32" />
         </div>
       </div>
-
+      {currentPuzzle && (
       <Card className="bg-slate-800/50 border-slate-700">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -175,7 +182,6 @@ export const PuzzleGame = ({ user, onUpdateUser }: PuzzleGameProps) => {
           <div className="text-lg text-slate-300 leading-relaxed">
             {currentPuzzle.question}
           </div>
-
           <div className="flex items-center space-x-4 text-sm text-slate-400">
             <div className="flex items-center">
               <Gift className="h-4 w-4 mr-1 text-yellow-400" />
@@ -186,7 +192,6 @@ export const PuzzleGame = ({ user, onUpdateUser }: PuzzleGameProps) => {
               {currentPuzzle.experience} XP
             </div>
           </div>
-
           {!showResult ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input
@@ -226,7 +231,6 @@ export const PuzzleGame = ({ user, onUpdateUser }: PuzzleGameProps) => {
                   </div>
                 </div>
               </div>
-              
               <Button
                 onClick={nextPuzzle}
                 className="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white"
@@ -235,7 +239,6 @@ export const PuzzleGame = ({ user, onUpdateUser }: PuzzleGameProps) => {
               </Button>
             </div>
           )}
-
           {solvedPuzzles.includes(currentPuzzle.id) && (
             <div className="flex items-center justify-center space-x-2 text-green-400">
               <CheckCircle className="h-5 w-5" />
@@ -244,6 +247,7 @@ export const PuzzleGame = ({ user, onUpdateUser }: PuzzleGameProps) => {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 };

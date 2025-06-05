@@ -1,7 +1,5 @@
-// Connect Four game logic for two players, with real-time state sync via Firebase
+// Connect Four game logic for two players
 import { useEffect, useState } from 'react';
-import { db } from '@/lib/firebase';
-import { ref, onValue, set } from 'firebase/database';
 
 const ROWS = 6;
 const COLS = 7;
@@ -76,14 +74,7 @@ export function ConnectFour({ roomName, user, isMyTurn, playMode }: { roomName: 
 
   useEffect(() => {
     if (playMode === 'player') {
-      const boardRef = ref(db, `rooms/${roomName}/games/connect4/board`);
-      const turnRef = ref(db, `rooms/${roomName}/games/connect4/turn`);
-      onValue(boardRef, snap => {
-        if (snap.exists()) setBoard(snap.val());
-      });
-      onValue(turnRef, snap => {
-        if (snap.exists()) setTurn(snap.val());
-      });
+      // TODO: Replace with Socket.IO logic for real-time updates
     } else {
       setBoard(initialBoard);
       setTurn('R');
@@ -101,11 +92,9 @@ export function ConnectFour({ roomName, user, isMyTurn, playMode }: { roomName: 
           if (row !== undefined) {
             const newBoard = board.map(arr => [...arr]);
             newBoard[row][col] = 'Y';
-            // Update both local state and Firebase for computer move
+            // Update local state for computer move
             setBoard(newBoard);
             setTurn('R');
-            set(ref(db, `rooms/${roomName}/games/connect4/board`), newBoard);
-            set(ref(db, `rooms/${roomName}/games/connect4/turn`), 'R');
           }
         }
       }, 600);
@@ -120,8 +109,7 @@ export function ConnectFour({ roomName, user, isMyTurn, playMode }: { roomName: 
       if (row === undefined) return;
       const newBoard = board.map(arr => [...arr]);
       newBoard[row][col] = turn;
-      set(ref(db, `rooms/${roomName}/games/connect4/board`), newBoard);
-      set(ref(db, `rooms/${roomName}/games/connect4/turn`), getNextTurn(turn));
+      // TODO: Replace with Socket.IO emit for player move
     } else {
       if (turn !== 'R') return;
       const row = [...Array(ROWS).keys()].reverse().find(r => !board[r][col]);
@@ -159,8 +147,7 @@ export function ConnectFour({ roomName, user, isMyTurn, playMode }: { roomName: 
             setTurn('R');
             setWinner(null);
             if (playMode === 'player') {
-              set(ref(db, `rooms/${roomName}/games/connect4/board`), initialBoard);
-              set(ref(db, `rooms/${roomName}/games/connect4/turn`), 'R');
+              // TODO: Replace with Socket.IO emit to reset game
             }
           }}
         >Replay</button>

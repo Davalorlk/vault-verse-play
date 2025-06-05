@@ -1,7 +1,5 @@
-// Tic Tac Toe game logic for two players, with real-time state sync via Firebase
+// Tic Tac Toe game logic for two players
 import { useEffect, useState } from 'react';
-import { db } from '@/lib/firebase';
-import { ref, onValue, set } from 'firebase/database';
 
 const initialBoard = [
   ['', '', ''],
@@ -30,14 +28,7 @@ export function TicTacToe({ roomName, user, isMyTurn, playMode }: { roomName: st
 
   useEffect(() => {
     if (playMode === 'player') {
-      const boardRef = ref(db, `rooms/${roomName}/games/tictactoe/board`);
-      const turnRef = ref(db, `rooms/${roomName}/games/tictactoe/turn`);
-      onValue(boardRef, snap => {
-        if (snap.exists()) setBoard(snap.val());
-      });
-      onValue(turnRef, snap => {
-        if (snap.exists()) setTurn(snap.val());
-      });
+      // TODO: Add code for joining an existing game and syncing state
     } else {
       setBoard(initialBoard);
       setTurn('X');
@@ -69,8 +60,8 @@ export function TicTacToe({ roomName, user, isMyTurn, playMode }: { roomName: st
       if (!isMyTurn || board[row][col]) return;
       const newBoard = board.map(arr => [...arr]);
       newBoard[row][col] = turn;
-      set(ref(db, `rooms/${roomName}/games/tictactoe/board`), newBoard);
-      set(ref(db, `rooms/${roomName}/games/tictactoe/turn`), getNextTurn(turn));
+      // TODO: Add code for updating the game state on the server
+      setTurn(getNextTurn(turn));
     } else {
       if (turn !== 'X' || board[row][col]) return;
       const newBoard = board.map(arr => [...arr]);

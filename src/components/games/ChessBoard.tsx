@@ -1,7 +1,6 @@
 // Chess game logic for two players, with real-time state sync via Firebase
 import { useEffect, useState } from 'react';
-import { db } from '@/lib/firebase';
-import { ref, onValue, set } from 'firebase/database';
+import { socket } from '@/lib/socket';
 
 const initialBoard = [
   ['r','n','b','q','k','b','n','r'],
@@ -167,28 +166,18 @@ function minimaxChess(board: string[][], turn: string, depth: number, maximizing
   return { score: bestScore, move: bestMove };
 }
 
+// Map for Unicode chess symbols
+const pieceSymbols: Record<string, string> = {
+  K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙',
+  k: '♚', q: '♛', r: '♜', b: '♝', n: '♞', p: '♟',
+};
+
 export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: string, user: any, isMyTurn: boolean, playMode: 'player' | 'computer' }) {
   const [board, setBoard] = useState(initialBoard);
   const [turn, setTurn] = useState('white');
   const [selected, setSelected] = useState<{row: number, col: number} | null>(null);
   const [possibleMoves, setPossibleMoves] = useState<{row:number,col:number}[]>([]);
   const [winner, setWinner] = useState<string|null>(null);
-
-  useEffect(() => {
-    if (playMode === 'player') {
-      const boardRef = ref(db, `rooms/${roomName}/games/chess/board`);
-      const turnRef = ref(db, `rooms/${roomName}/games/chess/turn`);
-      onValue(boardRef, snap => {
-        if (snap.exists()) setBoard(snap.val());
-      });
-      onValue(turnRef, snap => {
-        if (snap.exists()) setTurn(snap.val());
-      });
-    } else {
-      setBoard(initialBoard);
-      setTurn('white');
-    }
-  }, [roomName, playMode]);
 
   useEffect(() => {
     setWinner(getWinner(board, turn));
@@ -205,6 +194,33 @@ export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: s
       }, 700);
     }
   }, [board, turn, playMode, winner]);
+
+  useEffect(() => {
+    if (playMode === 'player') {
+      // Join the game room for real-time sync
+      socket.emit('join-game-room', { roomName, gameId: 'chess' });
+      // Listen for game state updates
+      const handleGameState = (state) => {
+        setBoard(state.board);
+        setTurn(state.turn);
+      };
+      socket.on('game-state-update', handleGameState);
+      return () => {
+        socket.off('game-state-update', handleGameState);
+      };
+    }
+  }, [roomName, playMode]);
+
+  // Emit game state after a move (only in multiplayer)
+  useEffect(() => {
+    if (playMode === 'player') {
+      socket.emit('game-state-update', {
+        roomName,
+        gameId: 'chess',
+        state: { board, turn }
+      });
+    }
+  }, [board, turn, playMode, roomName]);
 
   function handleCellClick(row: number, col: number) {
     if (winner) return;
@@ -229,8 +245,6 @@ export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: s
       const newBoard = board.map(arr=>[...arr]);
       newBoard[row][col] = newBoard[selected.row][selected.col];
       newBoard[selected.row][selected.col] = '';
-      set(ref(db, `rooms/${roomName}/games/chess/board`), newBoard);
-      set(ref(db, `rooms/${roomName}/games/chess/turn`), getNextTurn(turn));
       setSelected(null); setPossibleMoves([]);
     } else {
       if (turn !== 'white') return;
@@ -261,22 +275,36 @@ export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: s
 
   return (
     <div className="flex flex-col items-center justify-center w-full h-full">
-      {winner && <div className="text-xl font-bold text-yellow-400 mb-2">{winner === 'Draw' ? 'Draw!' : `${winner} wins!`}</div>}
-      <div className="grid grid-cols-8 w-80 border-4 border-yellow-400 rounded-lg shadow-xl bg-gradient-to-br from-slate-900 to-slate-700">
-        {board.map((rowArr, row) =>
-          rowArr.map((piece, col) => {
-            const isMove = possibleMoves.some(m=>m.row===row&&m.col===col);
-            return (
-              <div
-                key={row + '-' + col}
-                className={`aspect-square w-10 h-10 flex items-center justify-center text-xl cursor-pointer font-bold ${((row+col)%2===0?'bg-slate-200':'bg-slate-600')} ${selected && selected.row===row && selected.col===col ? 'ring-2 ring-yellow-400' : ''} ${isMove ? 'ring-2 ring-green-400' : ''}`}
-                onClick={() => handleCellClick(row, col)}
-              >
-                {piece}
-              </div>
-            );
-          })
-        )}
+      <div className="inline-block border-4 border-yellow-400 rounded-lg shadow-xl bg-gradient-to-br from-slate-900 to-slate-700 p-2">
+        <div
+          className="grid"
+          style={{
+            gridTemplateColumns: 'repeat(8, 48px)',
+            gridTemplateRows: 'repeat(8, 48px)',
+            gap: 0,
+          }}
+        >
+          {board.map((rowArr, row) =>
+            rowArr.map((cell, col) => {
+              const isLight = (row + col) % 2 === 1;
+              const isSelected = selected && selected.row === row && selected.col === col;
+              const isMove = possibleMoves.some(m => m.row === row && m.col === col);
+              return (
+                <div
+                  key={row + '-' + col}
+                  className={`w-12 h-12 flex items-center justify-center text-3xl font-bold select-none cursor-pointer transition-all duration-100
+                    ${isLight ? 'bg-slate-200' : 'bg-slate-600'}
+                    ${isSelected ? 'ring-4 ring-yellow-400 z-10' : ''}
+                    ${isMove ? 'ring-4 ring-green-400 z-10' : ''}`}
+                  style={{ color: cell && cell === cell.toUpperCase() ? '#fff' : '#222' }}
+                  onClick={() => handleCellClick(row, col)}
+                >
+                  {cell ? pieceSymbols[cell] : ''}
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
       {winner && (
         <button
@@ -287,10 +315,9 @@ export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: s
             setSelected(null);
             setPossibleMoves([]);
             setWinner(null);
-            if (playMode === 'player') {
-              set(ref(db, `rooms/${roomName}/games/chess/board`), initialBoard);
-              set(ref(db, `rooms/${roomName}/games/chess/turn`), 'white');
-            }
+            // COMMENTED OUT: Firebase logic for real-time sync
+            // set(ref(db, `rooms/${roomName}/games/chess/board`), initialBoard);
+            // set(ref(db, `rooms/${roomName}/games/chess/turn`), 'white');
           }}
         >Replay</button>
       )}

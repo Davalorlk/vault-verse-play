@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,31 +21,20 @@ export const LoginForm = ({ onLogin, onClose, onSwitchToRegister }: LoginFormPro
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
-    // Simulate API call
-    setTimeout(() => {
-      if (username && password) {
-        const userData = {
-          id: Date.now(),
-          username,
-          displayName: username,
-          avatar: '👤',
-          level: 1,
-          coins: 100,
-          experience: 0,
-          puzzlesSolved: 0,
-          rank: 'Novice',
-          achievements: [],
-          createdAt: new Date().toISOString()
-        };
-        
-        onLogin(userData);
-        toast.success(`Welcome back, ${username}!`);
-      } else {
-        toast.error('Please fill in all fields');
-      }
-      setIsLoading(false);
-    }, 1000);
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      });
+      if (!res.ok) throw new Error('Invalid username or password');
+      const user = await res.json();
+      onLogin(user);
+      toast.success(`Welcome back, ${user.display_name || user.displayName || user.username}!`);
+    } catch (err: any) {
+      toast.error(err.message || 'Login failed');
+    }
+    setIsLoading(false);
   };
 
   return (

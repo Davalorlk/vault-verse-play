@@ -1,7 +1,5 @@
-// Checkers game logic for two players, with real-time state sync via Firebase
+// Checkers game logic for two players
 import { useEffect, useState } from 'react';
-import { db } from '@/lib/firebase';
-import { ref, onValue, set } from 'firebase/database';
 
 const initialBoard = [
   ['b','','b','','b','','b',''],
@@ -137,23 +135,12 @@ export function Checkers({ roomName, user, isMyTurn }: { roomName: string, user:
   const [winner, setWinner] = useState<string|null>(null);
 
   useEffect(() => {
-    const boardRef = ref(db, `rooms/${roomName}/games/checkers/board`);
-    const turnRef = ref(db, `rooms/${roomName}/games/checkers/turn`);
-    onValue(boardRef, snap => {
-      if (snap.exists()) setBoard(snap.val());
-    });
-    onValue(turnRef, snap => {
-      if (snap.exists()) setTurn(snap.val());
-    });
-  }, [roomName]);
-
-  useEffect(() => {
     setWinner(getWinner(board));
   }, [board]);
 
   useEffect(() => {
     // Add computer move for Checkers
-    if (roomName === 'computer' && turn === 'b' && !winner) {
+    if (turn === 'b' && !winner) {
       setTimeout(() => {
         const { move } = minimaxCheckers(board, 'b', 3, true);
         if (move) {
@@ -211,36 +198,53 @@ export function Checkers({ roomName, user, isMyTurn }: { roomName: string, user:
       // Check for multi-capture
       const moreCaptures = getValidMoves(newBoard, row, col, turn).filter(m => m.capture);
       if (moreCaptures.length) {
-        set(ref(db, `rooms/${roomName}/games/checkers/board`), newBoard);
+        setBoard(newBoard);
         setSelected({row, col});
         setPossibleMoves(moreCaptures);
         return;
       }
     }
-    set(ref(db, `rooms/${roomName}/games/checkers/board`), newBoard);
-    set(ref(db, `rooms/${roomName}/games/checkers/turn`), getNextTurn(turn));
+    setBoard(newBoard);
+    setTurn(getNextTurn(turn));
     setSelected(null);
     setPossibleMoves([]);
   }
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center justify-center w-full h-full">
       {winner && <div className="text-xl font-bold text-yellow-400 mb-2">{winner} wins!</div>}
-      <div className="grid grid-cols-8 w-64 border border-yellow-400">
-        {board.map((rowArr, row) =>
-          rowArr.map((piece, col) => {
-            const isMove = possibleMoves.some(m => m.to[0] === row && m.to[1] === col);
-            return (
-              <div
-                key={row + '-' + col}
-                className={`aspect-square w-8 h-8 flex items-center justify-center text-xl cursor-pointer ${((row+col)%2===0?'bg-slate-200':'bg-slate-600')} ${selected && selected.row===row && selected.col===col ? 'ring-2 ring-yellow-400' : ''} ${isMove ? 'ring-2 ring-green-400' : ''}`}
-                onClick={() => handleCellClick(row, col)}
-              >
-                {piece === 'w' ? '\u26aa' : piece === 'b' ? '\u26ab' : piece === 'W' ? <span className="text-2xl">♔</span> : piece === 'B' ? <span className="text-2xl">♚</span> : ''}
-              </div>
-            );
-          })
-        )}
+      <div className="inline-block border-4 border-yellow-400 rounded-lg shadow-xl bg-gradient-to-br from-slate-900 to-slate-700 p-2">
+        <div
+          className="grid"
+          style={{
+            gridTemplateColumns: 'repeat(8, 48px)',
+            gridTemplateRows: 'repeat(8, 48px)',
+            gap: 0,
+          }}
+        >
+          {board.map((rowArr, row) =>
+            rowArr.map((cell, col) => {
+              const isDark = (row + col) % 2 === 1;
+              const isSelected = selected && selected.row === row && selected.col === col;
+              const isMove = possibleMoves.some(m => m.to[0] === row && m.to[1] === col);
+              return (
+                <div
+                  key={row + '-' + col}
+                  className={`w-12 h-12 flex items-center justify-center select-none cursor-pointer transition-all duration-100
+                    ${isDark ? 'bg-slate-700' : 'bg-slate-200'}
+                    ${isSelected ? 'ring-4 ring-yellow-400 z-10' : ''}
+                    ${isMove ? 'ring-4 ring-green-400 z-10' : ''}`}
+                  onClick={() => handleCellClick(row, col)}
+                >
+                  {cell === 'w' && <span className="w-8 h-8 rounded-full bg-white border-2 border-slate-400 flex items-center justify-center" />}
+                  {cell === 'b' && <span className="w-8 h-8 rounded-full bg-black border-2 border-slate-400 flex items-center justify-center" />}
+                  {cell === 'W' && <span className="w-8 h-8 rounded-full bg-white border-2 border-yellow-400 flex items-center justify-center text-xl">♔</span>}
+                  {cell === 'B' && <span className="w-8 h-8 rounded-full bg-black border-2 border-yellow-400 flex items-center justify-center text-xl text-white">♚</span>}
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
       {winner && (
         <button
@@ -251,10 +255,6 @@ export function Checkers({ roomName, user, isMyTurn }: { roomName: string, user:
             setSelected(null);
             setPossibleMoves([]);
             setWinner(null);
-            if (isMyTurn && roomName && typeof roomName === 'string' && roomName !== 'computer') {
-              set(ref(db, `rooms/${roomName}/games/checkers/board`), initialBoard);
-              set(ref(db, `rooms/${roomName}/games/checkers/turn`), 'w');
-            }
           }}
         >Replay</button>
       )}

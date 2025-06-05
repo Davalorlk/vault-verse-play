@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Send, Users, MessageCircle } from 'lucide-react';
+import { socket } from '@/lib/socket';
 
 interface Message {
   id: string;
@@ -20,55 +21,70 @@ interface GlobalChatProps {
 }
 
 export const GlobalChat = ({ user }: GlobalChatProps) => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      user: 'MindMaster',
-      avatar: '🧠',
-      message: 'Welcome to the Mind Vault global chat!',
-      timestamp: new Date(Date.now() - 300000),
-      rank: 'Champion'
-    },
-    {
-      id: '2',
-      user: 'PuzzleKing',
-      avatar: '👑',
-      message: 'Anyone up for a challenge?',
-      timestamp: new Date(Date.now() - 120000),
-      rank: 'Expert'
-    },
-    {
-      id: '3',
-      user: 'VaultSeeker',
-      avatar: '🔍',
-      message: 'Just solved my 100th puzzle! 🎉',
-      timestamp: new Date(Date.now() - 60000),
-      rank: 'Novice'
-    }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [onlineUsers] = useState(2847);
+  const [onlineUsers, setOnlineUsers] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Real-time message sync
+  useEffect(() => {
+    // TODO: Replace with Socket.IO logic
+    const dummyMessages = [
+      {
+        id: '1',
+        user: 'Alice',
+        avatar: '👩',
+        message: 'Hello, world!',
+        timestamp: new Date(),
+        rank: 'Novice'
+      },
+      {
+        id: '2',
+        user: 'Bob',
+        avatar: '👨',
+        message: 'Hi, Alice!',
+        timestamp: new Date(),
+        rank: 'Expert'
+      }
+    ];
+    setMessages(dummyMessages);
+
+    // TODO: Replace with real online users count
+    setOnlineUsers(42);
+  }, []);
+
+  useEffect(() => {
+    // Listen for incoming chat messages
+    socket.on('chat-message', (msg) => {
+      setMessages(prev => [
+        ...prev,
+        {
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }
+      ]);
+    });
+    return () => {
+      socket.off('chat-message');
+    };
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  useEffect(() => { scrollToBottom(); }, [messages]);
 
   const sendMessage = () => {
     if (newMessage.trim()) {
-      const message: Message = {
+      const msg = {
         id: Date.now().toString(),
         user: user.displayName,
         avatar: user.avatar,
         message: newMessage,
-        timestamp: new Date(),
+        timestamp: new Date().toISOString(),
         rank: user.rank
       };
-      setMessages(prev => [...prev, message]);
+      socket.emit('chat-message', msg);
       setNewMessage('');
     }
   };
@@ -80,6 +96,8 @@ export const GlobalChat = ({ user }: GlobalChatProps) => {
   };
 
   const formatTime = (timestamp: Date) => {
+    if (!timestamp) return '';
+    if (typeof timestamp === 'string') timestamp = new Date(timestamp);
     return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 

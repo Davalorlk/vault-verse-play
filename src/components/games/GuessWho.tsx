@@ -1,7 +1,4 @@
-// Guess Who game logic for two players, with real-time state sync via Firebase (simplified demo)
-import { useEffect, useState } from 'react';
-import { db } from '@/lib/firebase';
-import { ref, onValue, set } from 'firebase/database';
+// Guess Who game logic for two players (simplified demo)
 
 // Add more detailed characters for Guess Who
 const CHARACTERS = [
@@ -21,10 +18,7 @@ export function GuessWho({ roomName, user, isMyTurn, playMode }: { roomName: str
 
   useEffect(() => {
     if (playMode === 'player') {
-      const myCharRef = ref(db, `rooms/${roomName}/games/guesswho/${user.displayName}/character`);
-      const oppGuessRef = ref(db, `rooms/${roomName}/games/guesswho/${user.displayName}/guess`);
-      onValue(myCharRef, snap => { if (snap.exists()) setMyCharacter(snap.val()); });
-      onValue(oppGuessRef, snap => { if (snap.exists()) setOpponentGuess(snap.val()); });
+      // Firebase logic removed
     } else {
       setMyCharacter('');
       setGuess('');
@@ -37,7 +31,7 @@ export function GuessWho({ roomName, user, isMyTurn, playMode }: { roomName: str
     const charObj = CHARACTERS.find(c => c.name === char);
     if (!charObj) return;
     if (playMode === 'player') {
-      set(ref(db, `rooms/${roomName}/games/guesswho/${user.displayName}/character`), charObj.name);
+      // Firebase logic removed
       setMyCharacter(charObj.name);
     } else {
       setMyCharacter(charObj.name);
@@ -46,7 +40,7 @@ export function GuessWho({ roomName, user, isMyTurn, playMode }: { roomName: str
 
   function makeGuess() {
     if (playMode === 'player') {
-      set(ref(db, `rooms/${roomName}/games/guesswho/${user.displayName}/guess`), guess);
+      // Firebase logic removed
       if (guess === myCharacter) setWinner(user.displayName);
     } else {
       if (!myCharacter) return;

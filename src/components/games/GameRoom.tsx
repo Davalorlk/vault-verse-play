@@ -7,17 +7,16 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { db } from '@/lib/firebase';
-import { ref, onValue, set, push, off } from 'firebase/database';
 import { ChessBoard } from './ChessBoard';
 import { TicTacToe } from './TicTacToe';
 import { ConnectFour } from './ConnectFour';
-import { Ludo } from './Ludo';
 import { DotAndBox } from './DotAndBox';
 import { Gomoku } from './Gomoku';
 import { Hangman } from './Hangman';
 import { NineHoles } from './NineHoles';
 import { GuessWho } from './GuessWho';
+import { Checkers } from './Checkers';
+import { socket } from '@/lib/socket';
 
 interface GameMessage {
   id: string;
@@ -61,9 +60,26 @@ export const GameRoom = ({ gameId, gameName, user, roomName, playMode, onLeave }
 
   // Listen for chat and game state changes
   useEffect(() => {
-    const messagesRef = ref(db, `rooms/${roomName}/games/${gameId}/messages`);
-    const stateRef = ref(db, `rooms/${roomName}/games/${gameId}/state`);
-    const opponentRef = ref(db, `rooms/${roomName}/games/${gameId}/opponent`);
+    // Listen for incoming game room chat messages
+    socket.on('game-chat-message', (msg) => {
+      setMessages(prev => [
+        ...prev,
+        {
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }
+      ]);
+    });
+    return () => {
+      socket.off('game-chat-message');
+    };
+  }, []);
+
+  useEffect(() => {
+    // COMMENTED OUT: Firebase logic for real-time sync
+    // const messagesRef = ref(db, `rooms/${roomName}/games/${gameId}/messages`);
+    // const stateRef = ref(db, `rooms/${roomName}/games/${gameId}/state`);
+    // const opponentRef = ref(db, `rooms/${roomName}/games/${gameId}/opponent`);
 
     const handleMessages = (snapshot: any) => {
       const val = snapshot.val();
@@ -76,35 +92,37 @@ export const GameRoom = ({ gameId, gameName, user, roomName, playMode, onLeave }
       setOpponent(snapshot.val());
     };
 
-    onValue(messagesRef, handleMessages);
-    onValue(stateRef, handleState);
-    onValue(opponentRef, handleOpponent);
+    // onValue(messagesRef, handleMessages);
+    // onValue(stateRef, handleState);
+    // onValue(opponentRef, handleOpponent);
 
     // Register self as opponent if slot is empty
-    set(ref(db, `rooms/${roomName}/games/${gameId}/opponent`), {
-      name: user.displayName,
-      avatar: user.avatar,
-      rank: user.rank || 'Novice',
-    });
+    // set(ref(db, `rooms/${roomName}/games/${gameId}/opponent`), {
+    //   name: user.displayName || user.username || 'Anonymous',
+    //   avatar: user.avatar || '👤',
+    //   rank: user.rank || 'Novice',
+    // });
 
     return () => {
-      off(messagesRef, 'value', handleMessages);
-      off(stateRef, 'value', handleState);
-      off(opponentRef, 'value', handleOpponent);
+      // off(messagesRef, 'value', handleMessages);
+      // off(stateRef, 'value', handleState);
+      // off(opponentRef, 'value', handleOpponent);
     };
   }, [roomName, gameId, user]);
 
   const sendMessage = () => {
     if (newMessage.trim()) {
-      const messagesRef = ref(db, `rooms/${roomName}/games/${gameId}/messages`);
-      push(messagesRef, {
+      const msg = {
         id: Date.now().toString(),
         user: user.displayName,
         avatar: user.avatar,
         message: newMessage,
         timestamp: new Date().toISOString(),
         type: 'chat',
-      });
+        roomName,
+        gameId
+      };
+      socket.emit('game-chat-message', msg);
       setNewMessage('');
     }
   };
@@ -128,8 +146,6 @@ export const GameRoom = ({ gameId, gameName, user, roomName, playMode, onLeave }
         return <TicTacToe {...gameProps} />;
       case 'connect4':
         return <ConnectFour {...gameProps} />;
-      case 'ludo':
-        return <Ludo {...gameProps} />;
       case 'dotandbox':
         return <DotAndBox {...gameProps} />;
       case 'gomoku':
@@ -140,6 +156,9 @@ export const GameRoom = ({ gameId, gameName, user, roomName, playMode, onLeave }
         return <NineHoles {...gameProps} />;
       case 'guesswho':
         return <GuessWho {...gameProps} />;
+      case 'checkers':
+        // @ts-ignore
+        return <Checkers {...gameProps} />;
       default:
         return (
           <div className="bg-slate-700/50 rounded-lg p-4 md:p-8 flex items-center justify-center min-h-[300px] md:min-h-[400px]">
@@ -197,62 +216,65 @@ export const GameRoom = ({ gameId, gameName, user, roomName, playMode, onLeave }
   }, [callActive, roomName, user.isInitiator]);
 
   return (
-    <div className="space-y-4 lg:space-y-0">
-      {/* Header - Always at top */}
-      <Card className="bg-slate-800/50 border-slate-700">
-        <CardHeader className="pb-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onLeave}
-                className="text-slate-400 hover:text-white"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Button>
-              <CardTitle className="text-white text-lg md:text-xl">{gameName}</CardTitle>
+    <div className="space-y-4 lg:space-y-0 w-full max-w-7xl mx-auto px-2 md:px-6 flex flex-col lg:flex-row gap-4 min-h-[500px]">
+      {/* Header and player info remain at the top on mobile, side on desktop */}
+      <div className="flex flex-col lg:flex-row w-full gap-4">
+        {/* Header - Always at top */}
+        <Card className="bg-slate-800/50 border-slate-700 flex-1">
+          <CardHeader className="pb-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onLeave}
+                  className="text-slate-400 hover:text-white"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back
+                </Button>
+                <CardTitle className="text-white text-lg md:text-xl">{gameName}</CardTitle>
+              </div>
+              <Badge className="bg-green-500/20 text-green-400">
+                <Users className="h-3 w-3 mr-1" />
+                2/2 Players
+              </Badge>
             </div>
-            <Badge className="bg-green-500/20 text-green-400">
-              <Users className="h-3 w-3 mr-1" />
-              2/2 Players
-            </Badge>
-          </div>
-        </CardHeader>
-      </Card>
+          </CardHeader>
+        </Card>
 
-      {/* Player Info */}
-      <Card className="bg-slate-800/50 border-slate-700">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-lg">
-              <span className="text-xl md:text-2xl">{user.avatar}</span>
-              <div>
-                <div className="font-medium text-white text-sm md:text-base">{user.displayName}</div>
-                <Badge variant="secondary" className="text-xs bg-yellow-400/20 text-yellow-400">
-                  {user.rank}
-                </Badge>
+        {/* Player Info */}
+        <Card className="bg-slate-800/50 border-slate-700 flex-1">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+              <div className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-lg">
+                <span className="text-xl md:text-2xl">{user.avatar}</span>
+                <div>
+                  <div className="font-medium text-white text-sm md:text-base">{user.displayName}</div>
+                  <Badge variant="secondary" className="text-xs bg-yellow-400/20 text-yellow-400">
+                    {user.rank}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="text-center text-white font-bold text-lg">VS</div>
+
+              <div className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-lg">
+                <span className="text-xl md:text-2xl">{opponent?.avatar}</span>
+                <div>
+                  <div className="font-medium text-white text-sm md:text-base">{opponent?.name}</div>
+                  <Badge variant="secondary" className="text-xs bg-blue-400/20 text-blue-400">
+                    {opponent?.rank}
+                  </Badge>
+                </div>
               </div>
             </div>
-
-            <div className="text-center text-white font-bold text-lg">VS</div>
-
-            <div className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-lg">
-              <span className="text-xl md:text-2xl">{opponent?.avatar}</span>
-              <div>
-                <div className="font-medium text-white text-sm md:text-base">{opponent?.name}</div>
-                <Badge variant="secondary" className="text-xs bg-blue-400/20 text-blue-400">
-                  {opponent?.rank}
-                </Badge>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Game Area - Side by side layout for larger screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 min-h-[500px]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 w-full">
         {/* Game Board Area */}
         <div className="lg:col-span-2">
           <Card className="bg-slate-800/50 border-slate-700 h-full">
