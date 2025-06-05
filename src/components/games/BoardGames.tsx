@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { GameRoom } from './GameRoom';
-import { Crown, Grid3X3, Gamepad2, Target } from 'lucide-react';
+import { Crown, Grid3X3, Gamepad2, Target, Brain, Puzzle, UserX, CircleDot, Search } from 'lucide-react';
 
 interface Game {
   id: string;
@@ -68,6 +68,51 @@ export const BoardGames = ({ user }: BoardGamesProps) => {
       players: '2-4 Players',
       difficulty: 'Easy',
       online: 623
+    },
+    {
+      id: 'dotandbox',
+      name: 'Dot and Box',
+      icon: <CircleDot className="h-8 w-8" />,
+      description: 'Complete boxes by drawing lines between dots',
+      players: '2 Players',
+      difficulty: 'Medium',
+      online: 412
+    },
+    {
+      id: 'gomoku',
+      name: 'Gomoku',
+      icon: <Grid3X3 className="h-8 w-8" />,
+      description: 'Get five stones in a row to win',
+      players: '2 Players',
+      difficulty: 'Medium',
+      online: 321
+    },
+    {
+      id: 'hangman',
+      name: 'Hanging Man',
+      icon: <UserX className="h-8 w-8" />,
+      description: 'Guess the word before time runs out',
+      players: '2 Players',
+      difficulty: 'Easy',
+      online: 567
+    },
+    {
+      id: 'nineholes',
+      name: 'Nine Holes',
+      icon: <Puzzle className="h-8 w-8" />,
+      description: 'Mill strategy game with nine positions',
+      players: '2 Players',
+      difficulty: 'Medium',
+      online: 234
+    },
+    {
+      id: 'guesswho',
+      name: 'Guess Who',
+      icon: <Search className="h-8 w-8" />,
+      description: 'Guess your opponent\'s character first',
+      players: '2 Players',
+      difficulty: 'Easy',
+      online: 456
     }
   ];
 
@@ -94,11 +139,11 @@ export const BoardGames = ({ user }: BoardGamesProps) => {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-3xl font-bold text-white mb-2">Board Games Arena</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Board Games Arena</h2>
         <p className="text-slate-400">Challenge players from around the world</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
         {games.map((game) => (
           <Card 
             key={game.id} 
@@ -109,13 +154,13 @@ export const BoardGames = ({ user }: BoardGamesProps) => {
               <div className="flex justify-center text-yellow-400 mb-3">
                 {game.icon}
               </div>
-              <CardTitle className="text-white text-xl">{game.name}</CardTitle>
+              <CardTitle className="text-white text-lg md:text-xl">{game.name}</CardTitle>
             </CardHeader>
             
             <CardContent className="space-y-4">
               <p className="text-slate-400 text-sm text-center">{game.description}</p>
               
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center flex-wrap gap-2">
                 <Badge variant="outline" className="border-slate-600 text-slate-300">
                   {game.players}
                 </Badge>
@@ -144,10 +189,10 @@ export const BoardGames = ({ user }: BoardGamesProps) => {
       </div>
 
       <Card className="bg-slate-800/50 border-slate-700">
-        <CardContent className="p-6">
+        <CardContent className="p-4 md:p-6">
           <div className="text-center space-y-2">
-            <h3 className="text-xl font-semibold text-white">Game Rules & Tips</h3>
-            <p className="text-slate-400">
+            <h3 className="text-lg md:text-xl font-semibold text-white">Game Rules & Tips</h3>
+            <p className="text-slate-400 text-sm md:text-base">
               Each game has its own chat room where you can communicate with your opponents. 
               Be respectful and enjoy the strategic gameplay!
             </p>
