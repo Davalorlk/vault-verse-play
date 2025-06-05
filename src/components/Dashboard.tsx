@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +22,8 @@ import {
   Gamepad2,
   Gift
 } from 'lucide-react';
+import { db } from '@/lib/firebase';
+import { ref, set, onValue, serverTimestamp } from 'firebase/database';
 
 interface DashboardProps {
   user: any;
@@ -31,10 +33,20 @@ interface DashboardProps {
 export const Dashboard = ({ user, onLogout }: DashboardProps) => {
   const [activeTab, setActiveTab] = useState('puzzles');
   const [userStats, setUserStats] = useState(user);
+  const [onlineCount, setOnlineCount] = useState(0);
+  const [totalPlayers, setTotalPlayers] = useState(0);
 
   const updateUserStats = (newStats: any) => {
-    setUserStats({ ...userStats, ...newStats });
-    sessionStorage.setItem('mindVaultUser', JSON.stringify({ ...userStats, ...newStats }));
+    const updated = { ...userStats, ...newStats };
+    setUserStats(updated);
+    sessionStorage.setItem('mindVaultUser', JSON.stringify(updated));
+    // Backup to Firebase
+    if (updated.uid) {
+      set(ref(db, `users/${updated.uid}`), {
+        ...updated,
+        lastActive: serverTimestamp(),
+      });
+    }
   };
 
   const handlePurchase = (item: any) => {
@@ -45,6 +57,29 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
       // You could add a toast notification here
     }
   };
+
+  // Presence tracking
+  useEffect(() => {
+    if (userStats.uid) {
+      const presenceRef = ref(db, `presence/${userStats.uid}`);
+      set(presenceRef, true);
+      window.addEventListener('beforeunload', () => set(presenceRef, null));
+      return () => set(presenceRef, null);
+    }
+  }, [userStats.uid]);
+
+  // Real-time online and total players
+  useEffect(() => {
+    const usersRef = ref(db, 'users');
+    onValue(usersRef, snap => {
+      const users = snap.val() ? Object.values(snap.val()) : [];
+      setTotalPlayers(users.length);
+    });
+    const presenceRef = ref(db, 'presence');
+    onValue(presenceRef, snap => {
+      setOnlineCount(snap.val() ? Object.keys(snap.val()).length : 0);
+    });
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
@@ -77,6 +112,10 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
                   <Badge variant="secondary" className="bg-yellow-400/20 text-yellow-400 text-xs">
                     {userStats.rank}
                   </Badge>
+                </div>
+                <div className="flex flex-col items-end text-xs text-slate-400">
+                  <span>Online: <span className="text-green-400 font-bold">{onlineCount}</span></span>
+                  <span>Total Players: <span className="text-blue-400 font-bold">{totalPlayers}</span></span>
                 </div>
                 <Button
                   onClick={onLogout}

@@ -1,5 +1,6 @@
-
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { ref, onValue } from 'firebase/database';
+import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,11 @@ interface BoardGamesProps {
 
 export const BoardGames = ({ user }: BoardGamesProps) => {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  const [roomName, setRoomName] = useState<string>('');
+  const [roomInput, setRoomInput] = useState<string>('');
+  const [showRoomInput, setShowRoomInput] = useState<string | null>(null);
+  const [playMode, setPlayMode] = useState<'player' | 'computer' | null>(null);
+  const [totalPlayed, setTotalPlayed] = useState({});
 
   const games: Game[] = [
     {
@@ -116,6 +122,14 @@ export const BoardGames = ({ user }: BoardGamesProps) => {
     }
   ];
 
+  useEffect(() => {
+    // Listen for real-time total played for each game
+    const statsRef = ref(db, 'gameStats');
+    onValue(statsRef, snap => {
+      setTotalPlayed(snap.val() || {});
+    });
+  }, []);
+
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'Easy': return 'bg-green-500/20 text-green-400';
@@ -125,42 +139,45 @@ export const BoardGames = ({ user }: BoardGamesProps) => {
     }
   };
 
-  if (selectedGame) {
+  if (selectedGame && playMode) {
     return (
       <GameRoom 
         gameId={selectedGame} 
         gameName={games.find(g => g.id === selectedGame)?.name || ''}
         user={user}
-        onLeave={() => setSelectedGame(null)}
+        roomName={playMode === 'player' ? roomName : ''}
+        playMode={playMode}
+        onLeave={() => {
+          setSelectedGame(null);
+          setRoomName('');
+          setPlayMode(null);
+        }}
       />
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">Board Games Arena</h2>
-        <p className="text-slate-400">Challenge players from around the world</p>
+    <div className="flex flex-col items-center justify-center min-h-[80vh] w-full">
+      <div className="text-center mb-6">
+        <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">Board Games Arena</h2>
+        <p className="text-slate-400">Challenge players or play against the computer in a beautiful, modern arena</p>
       </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full max-w-6xl">
         {games.map((game) => (
           <Card 
             key={game.id} 
-            className="bg-slate-800/50 border-slate-700 hover:bg-slate-800/70 transition-all duration-300 hover:scale-105 cursor-pointer"
-            onClick={() => setSelectedGame(game.id)}
+            className="bg-gradient-to-br from-slate-800 via-slate-700 to-slate-900 border-0 shadow-xl hover:scale-105 transition-all duration-300 cursor-pointer flex flex-col items-center justify-between p-6 min-h-[340px]"
+            onClick={() => setShowRoomInput(game.id)}
           >
-            <CardHeader className="text-center pb-4">
+            <CardHeader className="text-center pb-4 w-full flex flex-col items-center">
               <div className="flex justify-center text-yellow-400 mb-3">
                 {game.icon}
               </div>
-              <CardTitle className="text-white text-lg md:text-xl">{game.name}</CardTitle>
+              <CardTitle className="text-white text-xl md:text-2xl font-bold mb-2">{game.name}</CardTitle>
             </CardHeader>
-            
-            <CardContent className="space-y-4">
-              <p className="text-slate-400 text-sm text-center">{game.description}</p>
-              
-              <div className="flex justify-between items-center flex-wrap gap-2">
+            <CardContent className="space-y-4 w-full flex-1 flex flex-col justify-between">
+              <p className="text-slate-400 text-sm text-center mb-2">{game.description}</p>
+              <div className="flex justify-between items-center flex-wrap gap-2 mb-2">
                 <Badge variant="outline" className="border-slate-600 text-slate-300">
                   {game.players}
                 </Badge>
@@ -168,37 +185,58 @@ export const BoardGames = ({ user }: BoardGamesProps) => {
                   {game.difficulty}
                 </Badge>
               </div>
-
-              <div className="text-center">
-                <div className="text-lg font-semibold text-green-400">{game.online}</div>
-                <div className="text-xs text-slate-400">players online</div>
+              <div className="text-center mb-2">
+                <div className="text-lg font-semibold text-green-400">{totalPlayed[game.id] || 0}</div>
+                <div className="text-xs text-slate-400">games played</div>
               </div>
-
-              <Button 
-                className="w-full bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-semibold"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedGame(game.id);
-                }}
-              >
-                Play Now
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button 
+                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-semibold"
+                  onClick={e => {
+                    e.stopPropagation();
+                    setPlayMode('player');
+                    setShowRoomInput(game.id);
+                  }}
+                >
+                  Play vs Player
+                </Button>
+                {showRoomInput === game.id && playMode === 'player' && (
+                  <div className="mt-2 space-y-2">
+                    <input
+                      className="w-full rounded bg-slate-700 text-white px-2 py-1 border border-slate-600"
+                      placeholder="Enter or share a room name"
+                      value={roomInput}
+                      onChange={e => setRoomInput(e.target.value)}
+                      onClick={e => e.stopPropagation()}
+                    />
+                    <Button
+                      className="w-full bg-green-500 hover:bg-green-600 text-white"
+                      onClick={e => {
+                        e.stopPropagation();
+                        setRoomName(roomInput.trim() || 'default-room');
+                        setSelectedGame(game.id);
+                      }}
+                      disabled={!roomInput.trim()}
+                    >
+                      Join Room
+                    </Button>
+                  </div>
+                )}
+                <Button 
+                  className="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold"
+                  onClick={e => {
+                    e.stopPropagation();
+                    setPlayMode('computer');
+                    setSelectedGame(game.id);
+                  }}
+                >
+                  Play vs Computer
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
-
-      <Card className="bg-slate-800/50 border-slate-700">
-        <CardContent className="p-4 md:p-6">
-          <div className="text-center space-y-2">
-            <h3 className="text-lg md:text-xl font-semibold text-white">Game Rules & Tips</h3>
-            <p className="text-slate-400 text-sm md:text-base">
-              Each game has its own chat room where you can communicate with your opponents. 
-              Be respectful and enjoy the strategic gameplay!
-            </p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

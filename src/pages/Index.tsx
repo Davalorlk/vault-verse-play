@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -7,11 +6,15 @@ import { LoginForm } from '@/components/auth/LoginForm';
 import { RegisterForm } from '@/components/auth/RegisterForm';
 import { Dashboard } from '@/components/Dashboard';
 import { Crown, Trophy, Users, Brain, Sparkles } from 'lucide-react';
+import { ref, onValue } from 'firebase/database';
+import { db } from '@/lib/firebase';
 
 const Index = () => {
   const [user, setUser] = useState(null);
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
+  const [onlineCount, setOnlineCount] = useState(0);
+  const [totalPlayers, setTotalPlayers] = useState(0);
 
   useEffect(() => {
     // Check for existing session
@@ -19,6 +22,19 @@ const Index = () => {
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
+  }, []);
+
+  useEffect(() => {
+    // Real-time online and total players
+    const usersRef = ref(db, 'users');
+    onValue(usersRef, snap => {
+      const users = snap.val() ? Object.values(snap.val()) : [];
+      setTotalPlayers(users.length);
+    });
+    const presenceRef = ref(db, 'presence');
+    onValue(presenceRef, snap => {
+      setOnlineCount(snap.val() ? Object.keys(snap.val()).length : 0);
+    });
   }, []);
 
   const handleLogin = (userData) => {
@@ -90,7 +106,7 @@ const Index = () => {
         {/* Stats Section */}
         <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-8 mb-8 md:mb-12">
           <div className="text-center">
-            <div className="text-2xl md:text-3xl font-bold text-yellow-400">2,847</div>
+            <div className="text-2xl md:text-3xl font-bold text-yellow-400">{onlineCount}</div>
             <div className="text-xs md:text-sm text-slate-400">Players Online</div>
           </div>
           <div className="text-center">
@@ -98,8 +114,8 @@ const Index = () => {
             <div className="text-xs md:text-sm text-slate-400">Games Played</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl md:text-3xl font-bold text-blue-400">156,832</div>
-            <div className="text-xs md:text-sm text-slate-400">Puzzles Solved</div>
+            <div className="text-2xl md:text-3xl font-bold text-blue-400">{totalPlayers}</div>
+            <div className="text-xs md:text-sm text-slate-400">Total Players</div>
           </div>
         </div>
 

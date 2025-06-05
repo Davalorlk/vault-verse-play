@@ -1,24 +1,35 @@
-
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Crown, Trophy, Medal, Target } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ref, onValue } from 'firebase/database';
+import { db } from '@/lib/firebase';
 
 interface LeaderboardProps {
   currentUser: any;
 }
 
-const mockLeaderboard = [
-  { id: 1, username: 'PuzzleMaster', avatar: '🧙‍♂️', score: 2847, puzzlesSolved: 156, rank: 'Legend' },
-  { id: 2, username: 'BrainStorm', avatar: '🧠', score: 2534, puzzlesSolved: 142, rank: 'Master' },
-  { id: 3, username: 'LogicKnight', avatar: '⚡', score: 2291, puzzlesSolved: 128, rank: 'Master' },
-  { id: 4, username: 'MindBender', avatar: '🔮', score: 2156, puzzlesSolved: 119, rank: 'Expert' },
-  { id: 5, username: 'ThinkTank', avatar: '🌟', score: 1987, puzzlesSolved: 104, rank: 'Expert' },
-  { id: 6, username: 'CodeBreaker', avatar: '👩‍💻', score: 1834, puzzlesSolved: 97, rank: 'Expert' },
-  { id: 7, username: 'NeuralNet', avatar: '🦸‍♂️', score: 1672, puzzlesSolved: 89, rank: 'Advanced' },
-  { id: 8, username: 'QuizWhiz', avatar: '👨‍💻', score: 1589, puzzlesSolved: 83, rank: 'Advanced' },
-];
-
 export const Leaderboard = ({ currentUser }: LeaderboardProps) => {
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [onlineCount, setOnlineCount] = useState(0);
+  const [totalPlayers, setTotalPlayers] = useState(0);
+
+  useEffect(() => {
+    // Real-time leaderboard
+    const usersRef = ref(db, 'users');
+    onValue(usersRef, snap => {
+      const users = snap.val() ? Object.values(snap.val()) : [];
+      const sorted = users.sort((a: any, b: any) => b.score - a.score).slice(0, 100);
+      setLeaderboard(sorted);
+      setTotalPlayers(users.length);
+    });
+    // Real-time online count
+    const presenceRef = ref(db, 'presence');
+    onValue(presenceRef, snap => {
+      setOnlineCount(snap.val() ? Object.keys(snap.val()).length : 0);
+    });
+  }, []);
+
   const getRankIcon = (position: number) => {
     switch (position) {
       case 1: return <Crown className="h-5 w-5 text-yellow-400" />;
@@ -42,11 +53,11 @@ export const Leaderboard = ({ currentUser }: LeaderboardProps) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Top 100 Leaderboard</h2>
-        <div className="text-sm text-slate-400">
-          Updated every hour
+        <div className="text-sm text-slate-400 flex flex-col items-end">
+          <span>Online: <span className="text-green-400 font-bold">{onlineCount}</span></span>
+          <span>Total Players: <span className="text-blue-400 font-bold">{totalPlayers}</span></span>
         </div>
       </div>
-
       <Card className="bg-slate-800/50 border-slate-700">
         <CardHeader>
           <CardTitle className="text-white flex items-center">
@@ -56,11 +67,11 @@ export const Leaderboard = ({ currentUser }: LeaderboardProps) => {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {mockLeaderboard.map((player, index) => (
+            {leaderboard.map((player, index) => (
               <div
-                key={player.id}
+                key={player.uid || player.id || index}
                 className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
-                  player.username === currentUser.username
+                  player.username === currentUser.username || player.displayName === currentUser.displayName
                     ? 'bg-yellow-400/20 border-yellow-400/50'
                     : 'bg-slate-700/30 border-slate-600 hover:bg-slate-700/50'
                 }`}
@@ -72,25 +83,24 @@ export const Leaderboard = ({ currentUser }: LeaderboardProps) => {
                   <div className="text-2xl">{player.avatar}</div>
                   <div>
                     <div className="font-semibold text-white flex items-center space-x-2">
-                      <span>{player.username}</span>
-                      {player.username === currentUser.username && (
+                      <span>{player.username || player.displayName}</span>
+                      {(player.username === currentUser.username || player.displayName === currentUser.displayName) && (
                         <Badge variant="outline" className="text-yellow-400 border-yellow-400">
                           You
                         </Badge>
                       )}
                     </div>
                     <div className="text-sm text-slate-400">
-                      {player.puzzlesSolved} puzzles solved
+                      {player.puzzlesSolved || player.gamesPlayed || 0} games played
                     </div>
                   </div>
                 </div>
-                
                 <div className="flex items-center space-x-4">
-                  <Badge className={`border ${getRankColor(player.rank)}`}>
-                    {player.rank}
+                  <Badge className={`border ${getRankColor(player.rank || 'Advanced')}`}>
+                    {player.rank || 'Advanced'}
                   </Badge>
                   <div className="text-right">
-                    <div className="font-bold text-white">{player.score.toLocaleString()}</div>
+                    <div className="font-bold text-white">{player.score?.toLocaleString() || 0}</div>
                     <div className="text-sm text-slate-400">points</div>
                   </div>
                 </div>
@@ -99,7 +109,6 @@ export const Leaderboard = ({ currentUser }: LeaderboardProps) => {
           </div>
         </CardContent>
       </Card>
-
       {/* Current User Stats */}
       <Card className="bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 border-yellow-400/50">
         <CardContent className="p-6">
