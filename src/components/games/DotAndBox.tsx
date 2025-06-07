@@ -172,93 +172,100 @@ export function DotAndBox({ roomName, user, isMyTurn, playMode }: { roomName: st
   }
 
   return (
-    <div>
-      <div>Scores: Player 1 - {scores[0]} | Player 2 - {scores[1]}</div>
-      {winner && <div className="text-xl font-bold text-yellow-400 mb-2">{winner}!</div>}
-      <div className="inline-block bg-gradient-to-br from-slate-900 to-slate-700 p-4 rounded-lg shadow-xl border-4 border-yellow-400">
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateRows: `repeat(${ROWS * 2 + 1}, 20px)`,
-            gridTemplateColumns: `repeat(${COLS * 2 + 1}, 20px)`
-          }}
-        >
-          {Array.from({ length: ROWS * 2 + 1 }).map((_, row) =>
-            Array.from({ length: COLS * 2 + 1 }).map((_, col) => {
-              // Dots
-              if (row % 2 === 0 && col % 2 === 0) {
-                return (
-                  <div
-                    key={`dot-${row}-${col}`}
-                    style={{ width: 8, height: 8, borderRadius: 4, background: '#fff', margin: 'auto' }}
-                  />
-                );
-              }
-              // Horizontal lines
-              if (row % 2 === 0 && col % 2 === 1 && row / 2 < initialLines.length && (col - 1) / 2 < initialLines[0].length) {
-                const i = row / 2;
-                const j = (col - 1) / 2;
-                const filled = lines[i][j];
-                return (
-                  <div
-                    key={`hline-${i}-${j}`}
-                    onClick={() => handleLineClick('h', i, j)}
-                    style={{
-                      height: 6,
-                      width: 20,
-                      background: filled ? '#facc15' : '#444',
-                      margin: 'auto',
-                      borderRadius: 3,
-                      cursor: filled ? 'default' : 'pointer',
-                      transition: 'background 0.2s'
-                    }}
-                  />
-                );
-              }
-              // Vertical lines
-              if (row % 2 === 1 && col % 2 === 0 && (row - 1) / 2 < initialLines.length - ROWS - 1 && col / 2 < initialLines[0].length) {
-                const i = (row - 1) / 2;
-                const j = col / 2;
-                const filled = lines[ROWS + 1 + i][j];
-                return (
-                  <div
-                    key={`vline-${i}-${j}`}
-                    onClick={() => handleLineClick('v', i, j)}
-                    style={{
-                      width: 6,
-                      height: 20,
-                      background: filled ? '#facc15' : '#444',
-                      margin: 'auto',
-                      borderRadius: 3,
-                      cursor: filled ? 'default' : 'pointer',
-                      transition: 'background 0.2s'
-                    }}
-                  />
-                );
-              }
-              // Boxes
-              if (row % 2 === 1 && col % 2 === 1 && (row - 1) / 2 < boxes.length && (col - 1) / 2 < boxes[0].length) {
-                const i = (row - 1) / 2;
-                const j = (col - 1) / 2;
-                const claimed = boxes[i][j] === 'claimed';
-                return (
-                  <div
-                    key={`box-${i}-${j}`}
-                    style={{
-                      width: 20,
-                      height: 20,
-                      background: claimed ? (playMode === 'player' ? '#60a5fa' : '#34d399') : 'transparent',
-                      margin: 'auto',
-                      borderRadius: 2,
-                      transition: 'background 0.2s'
-                    }}
-                  />
-                );
-              }
-              // Empty cell
-              return <div key={`empty-${row}-${col}`} />;
-            })
-          )}
+    <div className="w-full flex flex-col items-center justify-center py-2 px-1 md:px-4">
+      <div className="mb-2 text-center w-full flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+        <div className="text-base md:text-lg font-semibold text-yellow-400">Scores: Player 1 - {scores[0]} | Player 2 - {scores[1]}</div>
+        {winner && <div className="text-lg md:text-xl font-bold text-yellow-400">{winner}!</div>}
+      </div>
+      <div className="w-full overflow-x-auto flex justify-center">
+        <div className="inline-block bg-gradient-to-br from-slate-900 to-slate-700 p-2 md:p-4 rounded-lg shadow-xl border-2 md:border-4 border-yellow-400">
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateRows: `repeat(${ROWS * 2 + 1}, minmax(12px, 2vw))`,
+              gridTemplateColumns: `repeat(${COLS * 2 + 1}, minmax(12px, 2vw))`,
+              maxWidth: '100vw',
+              minWidth: '0',
+            }}
+            className="touch-manipulation"
+          >
+            {Array.from({ length: ROWS * 2 + 1 }).map((_, row) =>
+              Array.from({ length: COLS * 2 + 1 }).map((_, col) => {
+                // Dots
+                if (row % 2 === 0 && col % 2 === 0) {
+                  return (
+                    <div
+                      key={`dot-${row}-${col}`}
+                      style={{ width: 8, height: 8, borderRadius: 4, background: '#fff', margin: 'auto' }}
+                    />
+                  );
+                }
+                // Horizontal lines
+                if (row % 2 === 0 && col % 2 === 1 && row / 2 < initialLines.length && (col - 1) / 2 < initialLines[0].length) {
+                  const i = row / 2;
+                  const j = (col - 1) / 2;
+                  const filled = lines[i][j];
+                  return (
+                    <div
+                      key={`hline-${i}-${j}`}
+                      onClick={() => handleLineClick('h', i, j)}
+                      style={{
+                        height: 6,
+                        width: 20,
+                        background: filled ? '#facc15' : '#444',
+                        margin: 'auto',
+                        borderRadius: 3,
+                        cursor: filled ? 'default' : 'pointer',
+                        transition: 'background 0.2s'
+                      }}
+                    />
+                  );
+                }
+                // Vertical lines
+                if (row % 2 === 1 && col % 2 === 0 && (row - 1) / 2 < initialLines.length - ROWS - 1 && col / 2 < initialLines[0].length) {
+                  const i = (row - 1) / 2;
+                  const j = col / 2;
+                  const filled = lines[ROWS + 1 + i][j];
+                  return (
+                    <div
+                      key={`vline-${i}-${j}`}
+                      onClick={() => handleLineClick('v', i, j)}
+                      style={{
+                        width: 6,
+                        height: 20,
+                        background: filled ? '#facc15' : '#444',
+                        margin: 'auto',
+                        borderRadius: 3,
+                        cursor: filled ? 'default' : 'pointer',
+                        transition: 'background 0.2s'
+                      }}
+                    />
+                  );
+                }
+                // Boxes
+                if (row % 2 === 1 && col % 2 === 1 && (row - 1) / 2 < boxes.length && (col - 1) / 2 < boxes[0].length) {
+                  const i = (row - 1) / 2;
+                  const j = (col - 1) / 2;
+                  const claimed = boxes[i][j] === 'claimed';
+                  return (
+                    <div
+                      key={`box-${i}-${j}`}
+                      style={{
+                        width: 20,
+                        height: 20,
+                        background: claimed ? (playMode === 'player' ? '#60a5fa' : '#34d399') : 'transparent',
+                        margin: 'auto',
+                        borderRadius: 2,
+                        transition: 'background 0.2s'
+                      }}
+                    />
+                  );
+                }
+                // Empty cell
+                return <div key={`empty-${row}-${col}`} />;
+              })
+            )}
+          </div>
         </div>
       </div>
       {winner && (

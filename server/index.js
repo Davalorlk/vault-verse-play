@@ -112,6 +112,12 @@ io.on('connection', (socket) => {
     io.emit('game-chat-message', msg);
   });
 
+  // WebRTC signaling relay
+  socket.on('webrtc-signal', ({ roomName, type, data }) => {
+    // Relay to all other clients in the same room
+    socket.to(roomName).emit('webrtc-signal', { roomName, type, data });
+  });
+
   socket.on('disconnect', () => {
     onlineUsers.delete(socket.id);
     io.emit('presence-update', Array.from(onlineUsers.values()));
