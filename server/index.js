@@ -6,15 +6,16 @@ const { Pool } = require('pg');
 const cors = require('cors');
 
 const app = express();
+const allowedOrigin = 'https://fantastic-space-engine-rq4rrqj44qwfxwwr-8080.app.github.dev';
+app.use(cors({ origin: allowedOrigin }));
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const io = new Server(server, { cors: { origin: allowedOrigin } });
 
 // Neon Postgres connection (replace with your Neon connection string)
 const pool = new Pool({
   connectionString: 'postgresql://neondb_owner:npg_g1IsJlVdE6pt@ep-cold-lab-a8t05z3v-pooler.eastus2.azure.neon.tech/puzzle?sslmode=require',
 });
 
-app.use(cors());
 app.use(express.json());
 
 // Example REST endpoint

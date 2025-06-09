@@ -74,12 +74,18 @@ export function ConnectFour({ roomName, user, isMyTurn, playMode }: { roomName: 
 
   useEffect(() => {
     if (playMode === 'player') {
-      // TODO: Replace with Socket.IO logic for real-time updates
+      // Use Socket.IO for real-time updates
+      // Example: Listen for board updates from server
+      // socket.on('connect-four-update', (newBoard, newTurn) => {
+      //   setBoard(newBoard);
+      //   setTurn(newTurn);
+      // });
+      // return () => socket.off('connect-four-update');
     } else {
       setBoard(initialBoard);
       setTurn('R');
     }
-  }, [roomName, playMode]);
+  }, [playMode]);
 
   useEffect(() => {
     const win = checkWinner(board);

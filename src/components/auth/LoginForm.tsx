@@ -6,6 +6,9 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { X, LogIn, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 
+// Backend base URL
+const API_BASE_URL = 'https://mind-vault-kcfw.onrender.com';
+
 interface LoginFormProps {
   onLogin: (userData: any) => void;
   onClose: () => void;
@@ -22,7 +25,7 @@ export const LoginForm = ({ onLogin, onClose, onSwitchToRegister }: LoginFormPro
     e.preventDefault();
     setIsLoading(true);
     try {
-      const res = await fetch('/api/login', {
+      const res = await fetch(`${API_BASE_URL}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username })

@@ -7,13 +7,15 @@ interface LeaderboardProps {
   currentUser: any;
 }
 
+const API_BASE_URL = 'https://mind-vault-kcfw.onrender.com';
+
 export const Leaderboard = ({ currentUser }: LeaderboardProps) => {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [totalPlayers, setTotalPlayers] = useState(0);
 
   useEffect(() => {
-    fetch('/api/leaderboard')
+    fetch(`${API_BASE_URL}/api/leaderboard`)
       .then(res => res.json())
       .then(data => {
         setLeaderboard(data);

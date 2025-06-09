@@ -29,43 +29,17 @@ export const GlobalChat = ({ user }: GlobalChatProps) => {
   // Real-time message sync
   useEffect(() => {
     // TODO: Replace with Socket.IO logic
-    const dummyMessages = [
-      {
-        id: '1',
-        user: 'Alice',
-        avatar: '👩',
-        message: 'Hello, world!',
-        timestamp: new Date(),
-        rank: 'Novice'
-      },
-      {
-        id: '2',
-        user: 'Bob',
-        avatar: '👨',
-        message: 'Hi, Alice!',
-        timestamp: new Date(),
-        rank: 'Expert'
-      }
-    ];
-    setMessages(dummyMessages);
-
-    // TODO: Replace with real online users count
-    setOnlineUsers(42);
-  }, []);
-
-  useEffect(() => {
-    // Listen for incoming chat messages
+    // Remove dummy messages and implement real-time chat with socket.io
     socket.on('chat-message', (msg) => {
-      setMessages(prev => [
-        ...prev,
-        {
-          ...msg,
-          timestamp: new Date(msg.timestamp)
-        }
-      ]);
+      setMessages((prev) => [...prev, msg]);
+    });
+    // Optionally, handle presence updates
+    socket.on('presence-update', (users) => {
+      setOnlineUsers(users.length);
     });
     return () => {
       socket.off('chat-message');
+      socket.off('presence-update');
     };
   }, []);
 

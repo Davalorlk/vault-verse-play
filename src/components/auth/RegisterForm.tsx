@@ -15,6 +15,9 @@ interface RegisterFormProps {
 
 const avatarOptions = ['👤', '🧙‍♂️', '🦸‍♀️', '🦸‍♂️', '👩‍💻', '👨‍💻', '🧠', '🔮', '⚡', '🌟'];
 
+// Backend base URL
+const API_BASE_URL = 'https://mind-vault-kcfw.onrender.com';
+
 export const RegisterForm = ({ onRegister, onClose, onSwitchToLogin }: RegisterFormProps) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -57,7 +60,7 @@ export const RegisterForm = ({ onRegister, onClose, onSwitchToLogin }: RegisterF
       createdAt: new Date().toISOString()
     };
     try {
-      const res = await fetch('/api/register', {
+      const res = await fetch(`${API_BASE_URL}/api/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
