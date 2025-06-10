@@ -1,4 +1,5 @@
 // Checkers game logic for two players
+import { socket } from '@/lib/socket';
 import { useEffect, useState } from 'react';
 
 const initialBoard = [
@@ -93,6 +94,7 @@ function evaluateBoard(board: string[][], turn: string) {
   }
   return turn === 'w' ? score : -score;
 }
+// --- Smarter Checkers AI: minimax with capture preference ---
 function minimaxCheckers(board: string[][], turn: string, depth: number, maximizing: boolean) {
   const winner = getWinner(board);
   if (winner) return { score: winner === 'White' ? 100 : winner === 'Black' ? -100 : 0 };
@@ -111,15 +113,9 @@ function minimaxCheckers(board: string[][], turn: string, depth: number, maximiz
       const [cr, cc] = move.capture;
       newBoard[cr][cc] = '';
     }
-    // Kinging
-    if (newBoard[tr][tc] === 'w' && tr === 0) newBoard[tr][tc] = 'W';
     if (newBoard[tr][tc] === 'b' && tr === 7) newBoard[tr][tc] = 'B';
-    const result = minimaxCheckers(newBoard, getNextTurn(turn), depth - 1, !maximizing);
-    if (maximizing && result.score > bestScore) {
-      bestScore = result.score;
-      bestMove = move;
-    }
-    if (!maximizing && result.score < bestScore) {
+    const result = minimaxCheckers(newBoard, turn === 'w' ? 'b' : 'w', depth - 1, !maximizing);
+    if (maximizing ? result.score > bestScore : result.score < bestScore) {
       bestScore = result.score;
       bestMove = move;
     }
@@ -127,7 +123,7 @@ function minimaxCheckers(board: string[][], turn: string, depth: number, maximiz
   return { score: bestScore, move: bestMove };
 }
 
-export function Checkers({ roomName, user, isMyTurn }: { roomName: string, user: any, isMyTurn: boolean }) {
+export function Checkers({ roomName, user, isMyTurn, playMode }: { roomName: string, user: any, isMyTurn: boolean, playMode: 'player' | 'computer' }) {
   const [board, setBoard] = useState(initialBoard);
   const [turn, setTurn] = useState('w');
   const [selected, setSelected] = useState<{row: number, col: number} | null>(null);
@@ -135,12 +131,35 @@ export function Checkers({ roomName, user, isMyTurn }: { roomName: string, user:
   const [winner, setWinner] = useState<string|null>(null);
 
   useEffect(() => {
-    setWinner(getWinner(board));
-  }, [board]);
+    if (playMode === 'player') {
+      socket.emit('join-game-room', { roomName, gameId: 'checkers' });
+      const handleGameState = (state: { board: string[][], turn: string }) => {
+        setBoard(state.board);
+        setTurn(state.turn);
+      };
+      socket.on('game-state-update', handleGameState);
+      return () => {
+        socket.off('game-state-update', handleGameState);
+      };
+    } else {
+      setBoard(initialBoard);
+      setTurn('w');
+    }
+  }, [roomName, playMode]);
 
   useEffect(() => {
-    // Add computer move for Checkers
-    if (turn === 'b' && !winner) {
+    if (playMode === 'player') {
+      socket.emit('game-state-update', {
+        roomName,
+        gameId: 'checkers',
+        state: { board, turn }
+      });
+    }
+  }, [board, turn, playMode, roomName]);
+
+  useEffect(() => {
+    setWinner(getWinner(board));
+    if (playMode === 'computer' && turn === 'b' && !winner) {
       setTimeout(() => {
         const { move } = minimaxCheckers(board, 'b', 3, true);
         if (move) {
@@ -159,105 +178,65 @@ export function Checkers({ roomName, user, isMyTurn }: { roomName: string, user:
         }
       }, 700);
     }
-  }, [board, turn, winner, roomName]);
+  }, [board, turn, winner, playMode, roomName]);
 
   function handleCellClick(row: number, col: number) {
     if (winner) return;
-    if (!isMyTurn) return;
+    if (playMode === 'player' && !isMyTurn) return;
     if (!selected) {
-      if ((turn === 'w' && (board[row][col] === 'w' || board[row][col] === 'W')) || (turn === 'b' && (board[row][col] === 'b' || board[row][col] === 'B')) ) {
-        const moves = getValidMoves(board, row, col, turn);
-        // If any capture is available, only show captures
-        if (hasAnyCapture(board, turn)) {
-          setPossibleMoves(moves.filter(m => m.capture));
-        } else {
-          setPossibleMoves(moves);
+      // Select a piece if it's the player's turn and piece belongs to them
+      if ((turn === 'w' && (board[row][col] === 'w' || board[row][col] === 'W')) ||
+          (turn === 'b' && (board[row][col] === 'b' || board[row][col] === 'B'))) {
+        setSelected({ row, col });
+        setPossibleMoves(getValidMoves(board, row, col, turn));
+      }
+      return;
+    } else {
+      // Try to move to the clicked cell if it's a valid move
+      const moves = getValidMoves(board, selected.row, selected.col, turn);
+      const move = moves.find(m => m.to[0] === row && m.to[1] === col);
+      if (move) {
+        const newBoard = board.map(arr => [...arr]);
+        newBoard[row][col] = newBoard[selected.row][selected.col];
+        newBoard[selected.row][selected.col] = '';
+        if (move.capture) {
+          const [cr, cc] = move.capture;
+          newBoard[cr][cc] = '';
         }
-        setSelected({row, col});
-      }
-      return;
-    }
-    // Check if move is valid
-    const move = possibleMoves.find(m => m.to[0] === row && m.to[1] === col);
-    if (!move) {
-      setSelected(null);
-      setPossibleMoves([]);
-      return;
-    }
-    const newBoard = board.map(arr => [...arr]);
-    const piece = newBoard[selected.row][selected.col];
-    newBoard[selected.row][selected.col] = '';
-    newBoard[row][col] = piece;
-    // Kinging
-    if (piece === 'w' && row === 0) newBoard[row][col] = 'W';
-    if (piece === 'b' && row === 7) newBoard[row][col] = 'B';
-    // Capture
-    if (move.capture) {
-      const [cr, cc] = move.capture;
-      newBoard[cr][cc] = '';
-      // Check for multi-capture
-      const moreCaptures = getValidMoves(newBoard, row, col, turn).filter(m => m.capture);
-      if (moreCaptures.length) {
+        // King the piece if it reaches the last row
+        if (turn === 'w' && row === 0 && newBoard[row][col] === 'w') newBoard[row][col] = 'W';
+        if (turn === 'b' && row === 7 && newBoard[row][col] === 'b') newBoard[row][col] = 'B';
         setBoard(newBoard);
-        setSelected({row, col});
-        setPossibleMoves(moreCaptures);
-        return;
+        setTurn(getNextTurn(turn));
+        setSelected(null);
+        setPossibleMoves([]);
+      } else {
+        setSelected(null);
+        setPossibleMoves([]);
       }
     }
-    setBoard(newBoard);
-    setTurn(getNextTurn(turn));
-    setSelected(null);
-    setPossibleMoves([]);
   }
 
   return (
-    <div className="flex flex-col items-center justify-center w-full h-full">
-      {winner && <div className="text-xl font-bold text-yellow-400 mb-2">{winner} wins!</div>}
-      <div className="inline-block border-4 border-yellow-400 rounded-lg shadow-xl bg-gradient-to-br from-slate-900 to-slate-700 p-2">
-        <div
-          className="grid"
-          style={{
-            gridTemplateColumns: 'repeat(8, 48px)',
-            gridTemplateRows: 'repeat(8, 48px)',
-            gap: 0,
-          }}
-        >
-          {board.map((rowArr, row) =>
-            rowArr.map((cell, col) => {
-              const isDark = (row + col) % 2 === 1;
-              const isSelected = selected && selected.row === row && selected.col === col;
-              const isMove = possibleMoves.some(m => m.to[0] === row && m.to[1] === col);
+    <div>
+      <div className="board">
+        {board.map((row, r) => (
+          <div key={r} className="row">
+            {row.map((cell, c) => {
+              const isSelected = selected && selected.row === r && selected.col === c;
+              const isPossibleMove = possibleMoves.some(m => m.to[0] === r && m.to[1] === c);
               return (
                 <div
-                  key={row + '-' + col}
-                  className={`w-12 h-12 flex items-center justify-center select-none cursor-pointer transition-all duration-100
-                    ${isDark ? 'bg-slate-700' : 'bg-slate-200'}
-                    ${isSelected ? 'ring-4 ring-yellow-400 z-10' : ''}
-                    ${isMove ? 'ring-4 ring-green-400 z-10' : ''}`}
-                  onClick={() => handleCellClick(row, col)}
-                >
-                  {cell === 'w' && <span className="w-8 h-8 rounded-full bg-white border-2 border-slate-400 flex items-center justify-center" />}
-                  {cell === 'b' && <span className="w-8 h-8 rounded-full bg-black border-2 border-slate-400 flex items-center justify-center" />}
-                  {cell === 'W' && <span className="w-8 h-8 rounded-full bg-white border-2 border-yellow-400 flex items-center justify-center text-xl">♔</span>}
-                  {cell === 'B' && <span className="w-8 h-8 rounded-full bg-black border-2 border-yellow-400 flex items-center justify-center text-xl text-white">♚</span>}
-                </div>
+                  key={c}
+                  className={`cell ${cell} ${isSelected ? 'selected' : ''} ${isPossibleMove ? 'possible-move' : ''}`}
+                  onClick={() => handleCellClick(r, c)}
+                />
               );
-            })
-          )}
-        </div>
+            })}
+          </div>
+        ))}
       </div>
-      {winner && (
-        <button
-          className="mt-2 bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700"
-          onClick={() => {
-            setBoard(initialBoard);
-            setTurn('w');
-            setSelected(null);
-            setPossibleMoves([]);
-            setWinner(null);
-          }}
-        >Replay</button>
-      )}
+      {winner && <div className="winner">{winner} wins!</div>}
     </div>
   );
 }

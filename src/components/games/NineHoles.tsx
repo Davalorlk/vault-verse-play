@@ -1,5 +1,6 @@
 // Nine Holes game logic for two players (simplified demo)
 import { useEffect, useState } from 'react';
+import { socket } from '@/lib/socket';
 
 const initialBoard = [
   ['', '', ''],
@@ -21,7 +22,7 @@ function checkNineHolesWin(board: string[][]) {
   return null;
 }
 
-// Smarter Nine Holes AI: prefer to win, block, then random
+// Smarter Nine Holes AI: win, block, random
 function getBestNineHolesMove(board: string[][], turn: string, phase: 'placement'|'move') {
   // 1. Try to win
   for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
@@ -93,12 +94,16 @@ export function NineHoles({ roomName, user, isMyTurn, playMode }: { roomName: st
 
   useEffect(() => {
     if (playMode === 'player') {
-      const boardRef = ref(db, `rooms/${roomName}/games/nineholes/board`);
-      const turnRef = ref(db, `rooms/${roomName}/games/nineholes/turn`);
-      const movesRef = ref(db, `rooms/${roomName}/games/nineholes/moves`);
-      onValue(boardRef, snap => { if (snap.exists()) setBoard(snap.val()); });
-      onValue(turnRef, snap => { if (snap.exists()) setTurn(snap.val()); });
-      onValue(movesRef, snap => { if (snap.exists()) setMoves(snap.val()); });
+      socket.emit('join-game-room', { roomName, gameId: 'nineholes' });
+      const handleGameState = (state: { board: string[][], turn: string, moves: number }) => {
+        setBoard(state.board);
+        setTurn(state.turn);
+        setMoves(state.moves);
+      };
+      socket.on('game-state-update', handleGameState);
+      return () => {
+        socket.off('game-state-update', handleGameState);
+      };
     } else {
       setBoard(initialBoard);
       setTurn('X');
@@ -107,32 +112,14 @@ export function NineHoles({ roomName, user, isMyTurn, playMode }: { roomName: st
   }, [roomName, playMode]);
 
   useEffect(() => {
-    // Smarter computer move for Nine Holes
-    if (playMode === 'computer' && turn === 'O' && !winner) {
-      setTimeout(() => {
-        const move = getBestNineHolesMove(board, 'O', phase);
-        if (move) {
-          if (phase === 'placement') {
-            const [row, col] = move.to;
-            const newBoard = board.map(arr => [...arr]);
-            newBoard[row][col] = 'O';
-            setBoard(newBoard);
-            setTurn('X');
-            setMoves(m => m + 1);
-          } else if (move.from && move.to) {
-            const [fr, fc] = move.from;
-            const [tr, tc] = move.to;
-            const newBoard = board.map(arr => [...arr]);
-            newBoard[tr][tc] = 'O';
-            newBoard[fr][fc] = '';
-            setBoard(newBoard);
-            setTurn('X');
-            setMoves(m => m + 1);
-          }
-        }
-      }, 700);
+    if (playMode === 'player') {
+      socket.emit('game-state-update', {
+        roomName,
+        gameId: 'nineholes',
+        state: { board, turn, moves }
+      });
     }
-  }, [board, turn, playMode, winner, phase]);
+  }, [board, turn, moves, playMode, roomName]);
 
   useEffect(() => {
     // Count tokens
@@ -153,149 +140,86 @@ export function NineHoles({ roomName, user, isMyTurn, playMode }: { roomName: st
       if (board[row][col]) return;
       const newBoard = board.map(arr => [...arr]);
       newBoard[row][col] = turn;
-      if (playMode === 'player') {
-        set(ref(db, `rooms/${roomName}/games/nineholes/board`), newBoard);
-        set(ref(db, `rooms/${roomName}/games/nineholes/turn`), getNextTurn(turn));
-        set(ref(db, `rooms/${roomName}/games/nineholes/moves`), moves + 1);
-      } else {
-        setBoard(newBoard);
-        setTurn(getNextTurn(turn));
-        setMoves(m => m + 1);
-      }
+      setBoard(newBoard);
+      setTurn(getNextTurn(turn));
+      setMoves(m => m + 1);
+      // Socket emit handled by useEffect
       return;
     }
     // Move phase
     if (!selected) {
-      if (board[row][col] === turn) setSelected({row, col});
+      if (board[row][col] === turn) {
+        setSelected({ row, col });
+      }
       return;
-    }
-    // Only allow move to adjacent empty cell
-    if (board[row][col]) { setSelected(null); return; }
-    const {row: sr, col: sc} = selected;
-    if (Math.abs(sr-row) + Math.abs(sc-col) !== 1) { setSelected(null); return; }
-    const newBoard = board.map(arr => [...arr]);
-    newBoard[row][col] = turn;
-    newBoard[sr][sc] = '';
-    if (playMode === 'player') {
-      set(ref(db, `rooms/${roomName}/games/nineholes/board`), newBoard);
-      set(ref(db, `rooms/${roomName}/games/nineholes/turn`), getNextTurn(turn));
-      set(ref(db, `rooms/${roomName}/games/nineholes/moves`), moves + 1);
     } else {
-      setBoard(newBoard);
-      setTurn(getNextTurn(turn));
-      setMoves(m => m + 1);
-    }
-    setSelected(null);
-  }
-
-  // Helper to get valid moves for a selected token
-  function getValidMovesForSelected(row: number, col: number) {
-    const moves: [number, number][] = [];
-    for (const [dr, dc] of [[-1,0],[1,0],[0,-1],[0,1]]) {
-      const nr = row + dr, nc = col + dc;
-      if (nr >= 0 && nr < 3 && nc >= 0 && nc < 3 && !board[nr][nc]) {
-        moves.push([nr, nc]);
+      const { row: fromRow, col: fromCol } = selected;
+      // Only allow orthogonal moves to empty cell
+      if ((Math.abs(row - fromRow) + Math.abs(col - fromCol) === 1) && !board[row][col]) {
+        const newBoard = board.map(arr => [...arr]);
+        newBoard[row][col] = turn;
+        newBoard[fromRow][fromCol] = '';
+        setBoard(newBoard);
+        setTurn(getNextTurn(turn));
+        setMoves(m => m + 1);
+        setSelected(null);
+      } else {
+        setSelected(null);
       }
     }
-    return moves;
   }
 
+  // Computer move effect
+  useEffect(() => {
+    if (playMode === 'computer' && !winner && turn === 'O') {
+      setTimeout(() => {
+        const move = getBestNineHolesMove(board, 'O', phase);
+        if (move) {
+          if (phase === 'placement' && move.to) {
+            const [r, c] = move.to;
+            handleCellClick(r, c);
+          } else if (phase === 'move' && move.from && move.to) {
+            setSelected({ row: move.from[0], col: move.from[1] });
+            setTimeout(() => handleCellClick(move.to[0], move.to[1]), 200);
+          }
+        }
+      }, 700);
+    }
+  }, [turn, board, phase, playMode, winner]);
+
   return (
-    <div className="flex flex-col md:flex-row items-center justify-center w-full h-full gap-8">
-      <div className="flex flex-col items-center">
-        {winner && <div className="text-xl font-bold text-yellow-400 mb-2">{winner} wins!</div>}
-        {/* SVG Board */}
-        <svg width="320" height="320" viewBox="0 0 300 300" className="mb-4">
-          {/* Board lines */}
-          <line x1="50" y1="50" x2="250" y2="50" stroke="#fff" strokeWidth="4" />
-          <line x1="50" y1="150" x2="250" y2="150" stroke="#fff" strokeWidth="4" />
-          <line x1="50" y1="250" x2="250" y2="250" stroke="#fff" strokeWidth="4" />
-          <line x1="50" y1="50" x2="50" y2="250" stroke="#fff" strokeWidth="4" />
-          <line x1="150" y1="50" x2="150" y2="250" stroke="#fff" strokeWidth="4" />
-          <line x1="250" y1="50" x2="250" y2="250" stroke="#fff" strokeWidth="4" />
-          {/* Diagonals */}
-          <line x1="50" y1="50" x2="250" y2="250" stroke="#fff" strokeWidth="4" />
-          <line x1="250" y1="50" x2="50" y2="250" stroke="#fff" strokeWidth="4" />
-          {/* Nodes and tokens */}
-          {Array.from({ length: 3 }).map((_, r) =>
-            Array.from({ length: 3 }).map((_, c) => {
-              const cx = 50 + c * 100;
-              const cy = 50 + r * 100;
-              const cell = board[r][c];
-              const isSelected = selected && selected.row === r && selected.col === c;
-              let isValidMove = false;
-              if (selected && phase === 'move' && !cell) {
-                const validMoves = getValidMovesForSelected(selected.row, selected.col);
-                isValidMove = validMoves.some(([vr, vc]) => vr === r && vc === c);
-              }
-              return (
-                <g key={`node-${r}-${c}`}
-                  onClick={() => handleCellClick(r, c)}
-                  style={{ cursor: winner ? 'default' : 'pointer' }}
-                >
-                  {/* Node background highlight */}
-                  <circle cx={cx} cy={cy} r={28} fill={isSelected ? '#fde68a' : isValidMove ? '#bbf7d0' : 'rgba(255,255,255,0.08)'} stroke="#fff" strokeWidth={isSelected || isValidMove ? 4 : 2} />
-                  {/* Token */}
-                  {cell && (
-                    <circle
-                      cx={cx}
-                      cy={cy}
-                      r={20}
-                      fill={cell === 'X' ? '#ffe066' : '#34d399'}
-                      stroke="#222"
-                      strokeWidth="3"
-                      filter={isSelected ? 'drop-shadow(0 0 8px #fde68a)' : ''}
-                    />
-                  )}
-                </g>
-              );
-            })
-          )}
-        </svg>
-        <div className="text-xs text-slate-400 mb-2">Phase: {phase === 'placement' ? 'Placement' : 'Move'} | Moves: {moves}</div>
-        <div className="text-xs text-slate-300">Click and select one of your pieces to move, then click a valid destination.</div>
-        {winner && (
-          <button
-            className="mt-2 bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700"
-            onClick={() => {
-              setBoard(initialBoard);
-              setTurn('X');
-              setMoves(0);
-              setWinner(null);
-              setSelected(null);
-              if (playMode === 'player') {
-                set(ref(db, `rooms/${roomName}/games/nineholes/board`), initialBoard);
-                set(ref(db, `rooms/${roomName}/games/nineholes/turn`), 'X');
-                set(ref(db, `rooms/${roomName}/games/nineholes/moves`), 0);
-              }
-            }}
-          >Replay</button>
+    <div className="flex flex-col items-center justify-center min-h-[400px]">
+      <div className="grid grid-cols-3 gap-1 bg-slate-200 rounded-lg p-2 shadow-lg">
+        {board.map((row, r) =>
+          row.map((cell, c) => (
+            <div
+              key={`${r}-${c}`}
+              className={`w-16 h-16 flex items-center justify-center text-3xl font-bold border-2 border-slate-400 rounded cursor-pointer select-none transition-all duration-150 ${selected && selected.row === r && selected.col === c ? 'bg-yellow-200 text-black' : cell ? 'bg-white text-black' : 'bg-blue-100 text-slate-700 hover:bg-blue-200'} ${winner ? 'opacity-60 pointer-events-none' : ''}`}
+              onClick={() => handleCellClick(r, c)}
+            >
+              {cell}
+            </div>
+          ))
         )}
       </div>
-      {/* Player info */}
-      <div className="flex flex-col gap-8">
-        <div className="flex flex-col items-center">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-6 h-6 rounded-full border-2 border-yellow-400 bg-yellow-200 inline-block" />
-            <span className="text-lg font-bold text-yellow-200">You</span>
-          </div>
-          <div className="flex gap-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <span key={i} className={`w-6 h-6 rounded-full border-2 ${tokens.X > i ? 'bg-yellow-200 border-yellow-400' : 'bg-slate-700 border-slate-500'}`} />
-            ))}
-          </div>
-        </div>
-        <div className="flex flex-col items-center">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-6 h-6 rounded-full border-2 border-green-400 bg-green-300 inline-block" />
-            <span className="text-lg font-bold text-green-300">Computer</span>
-          </div>
-          <div className="flex gap-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <span key={i} className={`w-6 h-6 rounded-full border-2 ${tokens.O > i ? 'bg-green-300 border-green-400' : 'bg-slate-700 border-slate-500'}`} />
-            ))}
-          </div>
-        </div>
+      <div className="flex gap-4 mt-4">
+        <div className="text-lg">Turn: <span className="font-bold">{turn}</span></div>
+        <div className="text-lg">Phase: <span className="font-bold capitalize">{phase}</span></div>
+      </div>
+      {winner && <div className="mt-4 text-2xl text-green-700 font-bold">Winner: {winner}</div>}
+      <div className="mt-4">
+        <button onClick={() => {
+          setBoard(initialBoard);
+          setTurn('X');
+          setMoves(0);
+          setSelected(null);
+          setWinner(null);
+          if (playMode === 'player') {
+            socket.emit('reset-game', { roomName, gameId: 'nineholes' });
+          }
+        }} className="px-4 py-2 bg-blue-500 text-white rounded shadow hover:bg-blue-600 transition">
+          Restart Game
+        </button>
       </div>
     </div>
   );

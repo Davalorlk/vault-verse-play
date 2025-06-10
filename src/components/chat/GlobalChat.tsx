@@ -52,7 +52,7 @@ export const GlobalChat = ({ user }: GlobalChatProps) => {
     if (newMessage.trim()) {
       const msg = {
         id: Date.now().toString(),
-        user: user.displayName,
+        user: user.displayName || user.username || 'Anonymous',
         avatar: user.avatar,
         message: newMessage,
         timestamp: new Date().toISOString(),

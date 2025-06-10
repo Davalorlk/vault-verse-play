@@ -1,3 +1,5 @@
+import React, { useState, useEffect } from 'react';
+
 // Guess Who game logic for two players (simplified demo)
 
 // Add more detailed characters for Guess Who
@@ -15,6 +17,8 @@ export function GuessWho({ roomName, user, isMyTurn, playMode }: { roomName: str
   const [guess, setGuess] = useState('');
   const [opponentGuess, setOpponentGuess] = useState('');
   const [winner, setWinner] = useState('');
+  const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set());
+  const [remainingCharacters, setRemainingCharacters] = useState(CHARACTERS);
 
   useEffect(() => {
     if (playMode === 'player') {
@@ -24,6 +28,8 @@ export function GuessWho({ roomName, user, isMyTurn, playMode }: { roomName: str
       setGuess('');
       setOpponentGuess('');
       setWinner('');
+      setAskedQuestions(new Set());
+      setRemainingCharacters(CHARACTERS);
     }
   }, [roomName, user.displayName, playMode]);
 
@@ -49,6 +55,34 @@ export function GuessWho({ roomName, user, isMyTurn, playMode }: { roomName: str
       if (guess === compChar) setWinner(user.displayName);
       else setWinner('Computer');
     }
+  }
+
+  // --- Smarter Guess Who AI helpers ---
+  function getBestGuessWhoQuestion(remaining: any[], asked: Set<string>) {
+    // Find the attribute that splits the remaining characters most evenly and hasn't been asked
+    const attrs = ['hair', 'glasses', 'hat', 'gender', 'hobby'];
+    let bestAttr = null, bestScore = 999;
+    for (const attr of attrs) {
+      if (asked.has(attr)) continue;
+      const values = new Set(remaining.map(c => c[attr]));
+      if (values.size < 2) continue;
+      // Score: how close to half/half split
+      for (const val of values) {
+        const count = remaining.filter(c => c[attr] === val).length;
+        const score = Math.abs(remaining.length/2 - count);
+        if (score < bestScore) {
+          bestScore = score;
+          bestAttr = { attr, val };
+        }
+      }
+    }
+    return bestAttr;
+  }
+  function getBestGuessWhoGuess(remaining: any[]) {
+    // If only one left, guess it
+    if (remaining.length === 1) return remaining[0].name;
+    // Otherwise, pick randomly
+    return remaining[Math.floor(Math.random()*remaining.length)].name;
   }
 
   return (

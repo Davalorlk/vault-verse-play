@@ -105,12 +105,18 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chat-message', (msg) => {
-    io.emit('chat-message', msg);
+    // Only emit to all except sender (for echo, also emit to sender)
+    socket.broadcast.emit('chat-message', msg);
+    socket.emit('chat-message', msg);
   });
 
   // Game room chat event
   socket.on('game-chat-message', (msg) => {
-    io.emit('game-chat-message', msg);
+    // Only emit to users in the same game room
+    const room = `${msg.roomName}-${msg.gameId}`;
+    socket.to(room).emit('game-chat-message', msg);
+    // Optionally, also emit to sender for echo
+    socket.emit('game-chat-message', msg);
   });
 
   // WebRTC signaling relay

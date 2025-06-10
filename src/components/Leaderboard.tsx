@@ -2,6 +2,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Crown, Trophy, Medal, Target } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { socket } from '@/lib/socket';
 
 interface LeaderboardProps {
   currentUser: any;
@@ -13,21 +14,45 @@ export const Leaderboard = ({ currentUser }: LeaderboardProps) => {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [onlineCount, setOnlineCount] = useState(0);
   const [totalPlayers, setTotalPlayers] = useState(0);
+  const [userRank, setUserRank] = useState<number|null>(null);
 
-  useEffect(() => {
+  // Fetch leaderboard and set user rank
+  const fetchLeaderboard = () => {
     fetch(`${API_BASE_URL}/api/leaderboard`)
       .then(res => res.json())
       .then(data => {
         setLeaderboard(data);
         setTotalPlayers(data.length);
+        // Find current user's rank (1-based)
+        const idx = data.findIndex((p: any) =>
+          p.uid === currentUser.uid ||
+          p.username === currentUser.username ||
+          p.displayName === currentUser.displayName
+        );
+        setUserRank(idx >= 0 ? idx + 1 : null);
       })
       .catch(() => {
         setLeaderboard([]);
         setTotalPlayers(0);
+        setUserRank(null);
       });
-    // Optionally, listen for real-time online count via Socket.IO
-    // setOnlineCount(...) from presence
-  }, []);
+  };
+
+  useEffect(() => {
+    fetchLeaderboard();
+    // Listen for real-time online count via Socket.IO
+    const handlePresence = (users: any[]) => {
+      setOnlineCount(users.length);
+      // Optionally, refetch leaderboard for real-time updates
+      fetchLeaderboard();
+    };
+    socket.on('presence-update', handlePresence);
+    // Request current presence
+    socket.emit('get-presence');
+    return () => {
+      socket.off('presence-update', handlePresence);
+    };
+  }, [currentUser]);
 
   const getRankIcon = (position: number) => {
     switch (position) {
@@ -121,7 +146,7 @@ export const Leaderboard = ({ currentUser }: LeaderboardProps) => {
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold text-yellow-400">
-                #{Math.floor(Math.random() * 50) + 50}
+                {userRank ? `#${userRank}` : 'Unranked'}
               </div>
               <div className="text-sm text-slate-300">Global Rank</div>
             </div>

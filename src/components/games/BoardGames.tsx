@@ -127,8 +127,7 @@ export const BoardGames = ({ user }: BoardGamesProps) => {
         gameName={games.find(g => g.id === selectedGame)?.name || ''}
         user={user}
         roomName={playMode === 'player' ? roomName : ''}
-        playMode={playMode}
-        onLeave={() => {
+        playMode={playMode}        onLeave={() => {
           setSelectedGame(null);
           setRoomName('');
           setPlayMode(null);

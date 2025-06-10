@@ -1,5 +1,6 @@
 // Gomoku game logic for two players (simplified demo)
 import { useEffect, useState } from 'react';
+import { socket } from '@/lib/socket';
 
 const SIZE = 10;
 const initialBoard = Array.from({ length: SIZE }, () => Array(SIZE).fill(''));
@@ -26,6 +27,36 @@ function checkWinner(board: string[][]) {
   return null;
 }
 
+// --- Smarter Gomoku AI: block, win, or random ---
+function getBestGomokuMove(board: string[][], ai: string, player: string) {
+  // Try to win
+  for (let r = 0; r < board.length; r++) for (let c = 0; c < board[0].length; c++) {
+    if (!board[r][c]) {
+      board[r][c] = ai;
+      if (checkWinner(board) === ai) {
+        board[r][c] = '';
+        return [r, c];
+      }
+      board[r][c] = '';
+    }
+  }
+  // Block opponent
+  for (let r = 0; r < board.length; r++) for (let c = 0; c < board[0].length; c++) {
+    if (!board[r][c]) {
+      board[r][c] = player;
+      if (checkWinner(board) === player) {
+        board[r][c] = '';
+        return [r, c];
+      }
+      board[r][c] = '';
+    }
+  }
+  // Otherwise, pick random
+  const moves = [];
+  for (let r = 0; r < board.length; r++) for (let c = 0; c < board[0].length; c++) if (!board[r][c]) moves.push([r, c]);
+  return moves[Math.floor(Math.random() * moves.length)];
+}
+
 export function Gomoku({ roomName, user, isMyTurn, playMode }: { roomName: string, user: any, isMyTurn: boolean, playMode: 'player' | 'computer' }) {
   const [board, setBoard] = useState(initialBoard);
   const [turn, setTurn] = useState('X');
@@ -33,7 +64,15 @@ export function Gomoku({ roomName, user, isMyTurn, playMode }: { roomName: strin
 
   useEffect(() => {
     if (playMode === 'player') {
-      // Firebase logic removed
+      socket.emit('join-game-room', { roomName, gameId: 'gomoku' });
+      const handleGameState = (state: { board: string[][], turn: string }) => {
+        setBoard(state.board);
+        setTurn(state.turn);
+      };
+      socket.on('game-state-update', handleGameState);
+      return () => {
+        socket.off('game-state-update', handleGameState);
+      };
     } else {
       setBoard(initialBoard);
       setTurn('X');
@@ -41,20 +80,25 @@ export function Gomoku({ roomName, user, isMyTurn, playMode }: { roomName: strin
   }, [roomName, playMode]);
 
   useEffect(() => {
+    if (playMode === 'player') {
+      socket.emit('game-state-update', {
+        roomName,
+        gameId: 'gomoku',
+        state: { board, turn }
+      });
+    }
+  }, [board, turn, playMode, roomName]);
+
+  useEffect(() => {
     const win = checkWinner(board);
     if (win) setWinner(win);
     if (playMode === 'computer' && turn === 'O' && !win) {
       setTimeout(() => {
-        // Computer move: pick random empty cell
-        const empty: [number, number][] = [];
-        for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (!board[r][c]) empty.push([r, c]);
-        if (empty.length) {
-          const [row, col] = empty[Math.floor(Math.random() * empty.length)];
-          const newBoard = board.map(arr => [...arr]);
-          newBoard[row][col] = 'O';
-          setBoard(newBoard);
-          setTurn('X');
-        }
+        const [row, col] = getBestGomokuMove(board, 'O', 'X');
+        const newBoard = board.map(arr => [...arr]);
+        newBoard[row][col] = 'O';
+        setBoard(newBoard);
+        setTurn('X');
       }, 600);
     }
   }, [board, turn, playMode]);
@@ -65,7 +109,9 @@ export function Gomoku({ roomName, user, isMyTurn, playMode }: { roomName: strin
       if (!isMyTurn || board[row][col]) return;
       const newBoard = board.map(arr => [...arr]);
       newBoard[row][col] = turn;
-      // Firebase logic removed
+      setBoard(newBoard);
+      setTurn(getNextTurn(turn));
+      // Socket emit handled by useEffect
     } else {
       if (turn !== 'X' || board[row][col]) return;
       const newBoard = board.map(arr => [...arr]);

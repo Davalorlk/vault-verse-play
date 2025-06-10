@@ -89,8 +89,27 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex flex-col items-center w-full">
-      <div className="w-full max-w-7xl px-2 md:px-6 flex-1 flex flex-col">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 w-full">
+      {/* App Header */}
+      <header className="w-full flex items-center justify-between px-4 md:px-8 py-3 bg-slate-900/80 shadow-lg fixed top-0 left-0 z-50">
+        <div className="flex items-center gap-3">
+          <Brain className="h-7 w-7 text-yellow-400" />
+          <span className="text-2xl font-bold text-white tracking-wide">MIND VAULT</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full">
+            <span className="text-lg">{user.avatar || '👤'}</span>
+            <span className="text-white font-semibold">{user.displayName || user.username}</span>
+          </div>
+          <Button
+            onClick={onLogout}
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded shadow text-sm"
+          >
+            Log out
+          </Button>
+        </div>
+      </header>
+      <div className="w-full max-w-7xl px-2 md:px-6 flex flex-col gap-8 items-center justify-center pt-20">
         <div className="py-6 flex flex-col gap-6 w-full">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="flex flex-wrap gap-2 justify-center w-full mb-4">
@@ -124,63 +143,65 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
             </TabsList>
 
             {/* Stats Bar */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
-              <Card className="bg-slate-800/50 border-slate-700">
-                <CardContent className="p-3 md:p-4">
-                  <div className="flex items-center space-x-2 md:space-x-3">
-                    <div className="p-1.5 md:p-2 bg-blue-500/20 rounded-lg">
-                      <Target className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
+            {activeTab === 'profile' && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+                <Card className="bg-slate-800/50 border-slate-700">
+                  <CardContent className="p-3 md:p-4">
+                    <div className="flex items-center space-x-2 md:space-x-3">
+                      <div className="p-1.5 md:p-2 bg-blue-500/20 rounded-lg">
+                        <Target className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
+                      </div>
+                      <div>
+                        <div className="text-sm md:text-lg font-semibold text-white">{userStats.puzzlesSolved}</div>
+                        <div className="text-xs text-slate-400">Puzzles</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-sm md:text-lg font-semibold text-white">{userStats.puzzlesSolved}</div>
-                      <div className="text-xs text-slate-400">Puzzles</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              <Card className="bg-slate-800/50 border-slate-700">
-                <CardContent className="p-3 md:p-4">
-                  <div className="flex items-center space-x-2 md:space-x-3">
-                    <div className="p-1.5 md:p-2 bg-green-500/20 rounded-lg">
-                      <Star className="h-4 w-4 md:h-5 md:w-5 text-green-400" />
+                <Card className="bg-slate-800/50 border-slate-700">
+                  <CardContent className="p-3 md:p-4">
+                    <div className="flex items-center space-x-2 md:space-x-3">
+                      <div className="p-1.5 md:p-2 bg-green-500/20 rounded-lg">
+                        <Star className="h-4 w-4 md:h-5 md:w-5 text-green-400" />
+                      </div>
+                      <div>
+                        <div className="text-sm md:text-lg font-semibold text-white">{userStats.experience}</div>
+                        <div className="text-xs text-slate-400">XP</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-sm md:text-lg font-semibold text-white">{userStats.experience}</div>
-                      <div className="text-xs text-slate-400">XP</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              <Card className="bg-slate-800/50 border-slate-700">
-                <CardContent className="p-3 md:p-4">
-                  <div className="flex items-center space-x-2 md:space-x-3">
-                    <div className="p-1.5 md:p-2 bg-purple-500/20 rounded-lg">
-                      <Crown className="h-4 w-4 md:h-5 md:w-5 text-purple-400" />
+                <Card className="bg-slate-800/50 border-slate-700">
+                  <CardContent className="p-3 md:p-4">
+                    <div className="flex items-center space-x-2 md:space-x-3">
+                      <div className="p-1.5 md:p-2 bg-purple-500/20 rounded-lg">
+                        <Crown className="h-4 w-4 md:h-5 md:w-5 text-purple-400" />
+                      </div>
+                      <div>
+                        <div className="text-sm md:text-lg font-semibold text-white">Level {userStats.level}</div>
+                        <div className="text-xs text-slate-400">Level</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-sm md:text-lg font-semibold text-white">Level {userStats.level}</div>
-                      <div className="text-xs text-slate-400">Level</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              <Card className="bg-slate-800/50 border-slate-700">
-                <CardContent className="p-3 md:p-4">
-                  <div className="flex items-center space-x-2 md:space-x-3">
-                    <div className="p-1.5 md:p-2 bg-yellow-500/20 rounded-lg">
-                      <Coins className="h-4 w-4 md:h-5 md:w-5 text-yellow-400" />
+                <Card className="bg-slate-800/50 border-slate-700">
+                  <CardContent className="p-3 md:p-4">
+                    <div className="flex items-center space-x-2 md:space-x-3">
+                      <div className="p-1.5 md:p-2 bg-yellow-500/20 rounded-lg">
+                        <Coins className="h-4 w-4 md:h-5 md:w-5 text-yellow-400" />
+                      </div>
+                      <div>
+                        <div className="text-sm md:text-lg font-semibold text-white">{userStats.coins}</div>
+                        <div className="text-xs text-slate-400">Coins</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-sm md:text-lg font-semibold text-white">{userStats.coins}</div>
-                      <div className="text-xs text-slate-400">Coins</div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             {/* Tab Content */}
             <TabsContent value="puzzles">

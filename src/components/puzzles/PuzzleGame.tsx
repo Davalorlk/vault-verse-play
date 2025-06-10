@@ -29,10 +29,24 @@ function parsePuzzles(raw: string): Puzzle[] {
   let id = 1;
   return blocks.map(block => {
     const typeMatch = block.match(/\*\*Type:\*\*\s*(.+)/);
-    const questionMatch = block.match(/\*\*Type:\*\*.+?\n([\s\S]+?)\n\*\*Solution:/);
+    // Improved question extraction: allow for question on same or next line, and fallback if needed
+    let question = '';
+    const typeLineIdx = block.indexOf('**Type:**');
+    const solutionIdx = block.indexOf('**Solution:**');
+    if (typeLineIdx !== -1 && solutionIdx !== -1) {
+      // Extract everything between type and solution
+      const between = block.slice(typeLineIdx, solutionIdx);
+      // Remove the type line
+      const lines = between.split('\n').slice(1);
+      question = lines.join(' ').replace(/\s+/g, ' ').trim();
+    }
+    // Fallback to old regex if above fails
+    if (!question) {
+      const questionMatch = block.match(/\*\*Type:\*\*.+?\n([\s\S]+?)\n\*\*Solution:/);
+      question = questionMatch ? questionMatch[1].replace(/\n/g, ' ').trim() : '';
+    }
     const answerMatch = block.match(/\*\*Solution:\*\*\s*(.+)/);
     const type = typeMatch ? typeMatch[1].trim() : 'Unknown';
-    const question = questionMatch ? questionMatch[1].replace(/\n/g, ' ').trim() : '';
     const answer = answerMatch ? answerMatch[1].trim() : '';
     // Simple heuristics for category/difficulty/coins/experience
     let category = 'General', difficulty = 'Easy', coins = 10, experience = 25;
@@ -46,6 +60,9 @@ function parsePuzzles(raw: string): Puzzle[] {
     if (/riddle/i.test(type)) difficulty = 'Hard';
     if (difficulty === 'Medium') { coins = 15; experience = 35; }
     if (difficulty === 'Hard') { coins = 25; experience = 50; }
+    if (!question) {
+      console.warn('Parsed puzzle with empty question:', { id, type, answer, block });
+    }
     return {
       id: id++,
       type,
@@ -71,13 +88,29 @@ export const PuzzleGame = ({ user, onUpdateUser }: PuzzleGameProps) => {
 
   // Load and parse puzzles from puzzle.txt
   useEffect(() => {
-    fetch('/puzzle.txt')
-      .then(res => res.text())
-      .then(text => {
-        const parsed = parsePuzzles(text);
-        setPuzzles(parsed);
-        setLoading(false);
-      });
+    const tryFetch = async (paths: string[]) => {
+      for (const path of paths) {
+        try {
+          const res = await fetch(path);
+          if (res.ok) {
+            const text = await res.text();
+            console.log('Fetched', path, 'content:', text.slice(0, 500));
+            const parsed = parsePuzzles(text);
+            console.log('Parsed puzzles:', parsed);
+            setPuzzles(parsed);
+            setLoading(false);
+            return;
+          } else {
+            console.error('Failed to fetch', path, 'status:', res.status);
+          }
+        } catch (err) {
+          console.error('Error fetching', path, err);
+        }
+      }
+      setLoading(false);
+      console.error('Failed to load any puzzle.txt file!');
+    };
+    tryFetch(['/puzzle.txt', 'puzzle.txt', '../puzzle.txt']);
   }, []);
 
   // Load solved puzzles from localStorage
@@ -172,9 +205,7 @@ export const PuzzleGame = ({ user, onUpdateUser }: PuzzleGameProps) => {
               <Badge variant="secondary" className="bg-blue-500/20 text-blue-400">
                 {currentPuzzle.category}
               </Badge>
-              <Badge className={`text-white ${getDifficultyColor(currentPuzzle.difficulty)}`}>
-                {currentPuzzle.difficulty}
-              </Badge>
+              <Badge className={`text-white ${getDifficultyColor(currentPuzzle.difficulty)}`}>{currentPuzzle.difficulty}</Badge>
             </div>
           </div>
         </CardHeader>
@@ -247,6 +278,13 @@ export const PuzzleGame = ({ user, onUpdateUser }: PuzzleGameProps) => {
           )}
         </CardContent>
       </Card>
+      )}
+      {!currentPuzzle && (
+        <Card className="bg-slate-800/50 border-slate-700">
+          <CardContent>
+            <div className="text-slate-400 text-center py-8">No puzzle available.</div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

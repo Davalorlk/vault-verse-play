@@ -7,6 +7,39 @@ function getRandomWord() {
   return WORDS[Math.floor(Math.random() * WORDS.length)];
 }
 
+// --- Smarter Hangman AI: dictionary-based pattern matching ---
+const LETTER_FREQUENCY = 'etaoinshrdlucmfwypvbgkjqxz'.split('');
+const DICTIONARY = [
+  'react', 'firebase', 'hangman', 'puzzle', 'logic', 'garden', 'music', 'cooking', 'reading', 'cycling', 'painting', 'blonde', 'brown', 'black', 'red', 'male', 'female', 'hobby', 'hat', 'glasses'
+];
+function getBestHangmanGuess(word: string, guesses: string[]): string {
+  // Use revealed pattern to filter dictionary
+  const pattern = word.split('').map(l => (guesses.includes(l) ? l : '_')).join('');
+  const regex = new RegExp('^' + pattern.replace(/_/g, '.') + '$');
+  const candidates = DICTIONARY.filter(w => w.length === word.length && regex.test(w) && w.split('').every(l => /^[a-z]$/.test(l)));
+  // Count letter frequency in candidates
+  const freq: Record<string, number> = {};
+  for (const w of candidates) {
+    for (const l of w) {
+      if (!guesses.includes(l)) freq[l] = (freq[l] || 0) + 1;
+    }
+  }
+  // Pick the most frequent unused letter
+  let best = '', bestCount = -1;
+  for (const l in freq) {
+    if (freq[l] > bestCount) {
+      best = l;
+      bestCount = freq[l];
+    }
+  }
+  // Fallback to frequency order
+  if (!best) {
+    const available = LETTER_FREQUENCY.filter(l => !guesses.includes(l));
+    return available[0] || '';
+  }
+  return best;
+}
+
 export function Hangman({ roomName, user, isMyTurn, playMode }: { roomName: string, user: any, isMyTurn: boolean, playMode: 'player' | 'computer' }) {
   const [word, setWord] = useState('');
   const [guesses, setGuesses] = useState<string[]>([]);
@@ -51,11 +84,9 @@ export function Hangman({ roomName, user, isMyTurn, playMode }: { roomName: stri
   useEffect(() => {
     if (playMode === 'computer' && !lost && !won && guesses.length && !isMyTurn) {
       setTimeout(() => {
-        // Computer guesses a random letter
-        const alphabet = 'abcdefghijklmnopqrstuvwxyz'.split('');
-        const available = alphabet.filter(l => !guesses.includes(l));
-        if (available.length) {
-          const guess = available[Math.floor(Math.random() * available.length)];
+        // Smarter computer guess
+        const guess = getBestHangmanGuess(word, guesses);
+        if (guess) {
           setGuesses([...guesses, guess]);
           if (!word.includes(guess)) setWrong(w => w + 1);
         }

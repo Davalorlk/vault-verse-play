@@ -45,7 +45,35 @@ const Index = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 w-full">
-      <div className="w-full max-w-3xl px-2 md:px-6 flex flex-col gap-8 items-center justify-center">
+      {/* App Header */}
+      <header className="w-full flex items-center justify-between px-4 md:px-8 py-3 bg-slate-900/80 shadow-lg fixed top-0 left-0 z-50">
+        <div className="flex items-center gap-3">
+          <Brain className="h-7 w-7 text-yellow-400" />
+          <span className="text-2xl font-bold text-white tracking-wide">MIND VAULT</span>
+        </div>
+        {user && (
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full">
+              <span className="text-lg">{user.avatar || '👤'}</span>
+              <span className="text-white font-semibold">{user.displayName || user.username}</span>
+            </div>
+            <Button
+              onClick={handleLogout}
+              className="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded shadow text-sm"
+            >
+              Log out
+            </Button>
+          </div>
+        )}
+      </header>
+      {/* Slogan below header */}
+      <div className="w-full flex justify-center mt-24 mb-2">
+        <div className="flex items-center gap-2 bg-slate-800/80 px-4 py-2 rounded-full shadow-lg">
+          <Brain className="h-6 w-6 text-yellow-400" />
+          <span className="text-lg md:text-xl font-semibold text-yellow-300 tracking-wide">MIND VAULT - Unlock your potential</span>
+        </div>
+      </div>
+      <div className="w-full max-w-3xl px-2 md:px-6 flex flex-col gap-8 items-center justify-center pt-20"> {/* add pt-20 for header offset */}
         {/* Header */}
         <div className="text-center mb-8 md:mb-12">
           <div className="flex items-center justify-center mb-4 md:mb-6">
@@ -81,22 +109,6 @@ const Index = () => {
             <h3 className="text-lg md:text-xl font-semibold text-white mb-2">Compete & Rank</h3>
             <p className="text-sm md:text-base text-slate-400">Climb leaderboards, earn achievements, and unlock premium themes</p>
           </Card>
-        </div>
-
-        {/* Stats Section */}
-        <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-8 mb-8 md:mb-12">
-          <div className="text-center">
-            <div className="text-2xl md:text-3xl font-bold text-yellow-400">{onlineCount}</div>
-            <div className="text-xs md:text-sm text-slate-400">Players Online</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl md:text-3xl font-bold text-green-400">45,291</div>
-            <div className="text-xs md:text-sm text-slate-400">Games Played</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl md:text-3xl font-bold text-blue-400">{totalPlayers}</div>
-            <div className="text-xs md:text-sm text-slate-400">Total Players</div>
-          </div>
         </div>
 
         {/* CTA Section */}

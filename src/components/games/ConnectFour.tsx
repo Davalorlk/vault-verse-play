@@ -1,5 +1,6 @@
 // Connect Four game logic for two players
 import { useEffect, useState } from 'react';
+import { socket } from '@/lib/socket';
 
 const ROWS = 6;
 const COLS = 7;
@@ -28,42 +29,28 @@ function checkWinner(board: string[][]) {
   return null;
 }
 
-// Minimax AI for Connect Four
+// --- Smarter Connect Four AI: minimax search ---
 function minimax(board: string[][], depth: number, maximizing: boolean, ai: string, player: string): {score: number, col: number|null} {
-  const win = checkWinner(board);
-  if (win === ai) return { score: 100 - depth, col: null };
-  if (win === player) return { score: depth - 100, col: null };
-  if (depth === 0) return { score: 0, col: null };
-  const available = [];
-  for (let c = 0; c < COLS; c++) if (!board[0][c]) available.push(c);
-  if (available.length === 0) return { score: 0, col: null };
-  if (maximizing) {
-    let maxEval = -Infinity, bestCol = available[0];
-    for (const col of available) {
-      const row = [...Array(ROWS).keys()].reverse().find(r => !board[r][col]);
-      if (row === undefined) continue;
-      const newBoard = board.map(arr => [...arr]);
-      newBoard[row][col] = ai;
-      const evalResult = minimax(newBoard, depth - 1, false, ai, player).score;
-      if (evalResult > maxEval) { maxEval = evalResult; bestCol = col; }
+  const winner = checkWinner(board);
+  if (winner === ai) return { score: 100, col: null };
+  if (winner === player) return { score: -100, col: null };
+  if (depth === 0 || board.every(row => row.every(cell => cell))) return { score: 0, col: null };
+  let bestScore = maximizing ? -Infinity : Infinity;
+  let bestCol = null;
+  for (let c = 0; c < board[0].length; c++) {
+    const row = [...board].reverse().findIndex(r => !r[c]);
+    if (row === -1) continue;
+    const newBoard = board.map(arr => [...arr]);
+    newBoard[board.length - 1 - row][c] = maximizing ? ai : player;
+    const result = minimax(newBoard, depth - 1, !maximizing, ai, player);
+    if (maximizing ? result.score > bestScore : result.score < bestScore) {
+      bestScore = result.score;
+      bestCol = c;
     }
-    return { score: maxEval, col: bestCol };
-  } else {
-    let minEval = Infinity, bestCol = available[0];
-    for (const col of available) {
-      const row = [...Array(ROWS).keys()].reverse().find(r => !board[r][col]);
-      if (row === undefined) continue;
-      const newBoard = board.map(arr => [...arr]);
-      newBoard[row][col] = player;
-      const evalResult = minimax(newBoard, depth - 1, true, ai, player).score;
-      if (evalResult < minEval) { minEval = evalResult; bestCol = col; }
-    }
-    return { score: minEval, col: bestCol };
   }
+  return { score: bestScore, col: bestCol };
 }
-
 function getBestMove(board: string[][], ai: string, player: string) {
-  // Use minimax with depth 4 for reasonable performance
   return minimax(board, 4, true, ai, player).col;
 }
 
@@ -72,20 +59,34 @@ export function ConnectFour({ roomName, user, isMyTurn, playMode }: { roomName: 
   const [turn, setTurn] = useState('R');
   const [winner, setWinner] = useState<string|null>(null);
 
+  // Real-time sync for PvP
   useEffect(() => {
     if (playMode === 'player') {
-      // Use Socket.IO for real-time updates
-      // Example: Listen for board updates from server
-      // socket.on('connect-four-update', (newBoard, newTurn) => {
-      //   setBoard(newBoard);
-      //   setTurn(newTurn);
-      // });
-      // return () => socket.off('connect-four-update');
+      socket.emit('join-game-room', { roomName, gameId: 'connect4' });
+      const handleGameState = (state: { board: string[][], turn: string }) => {
+        setBoard(state.board);
+        setTurn(state.turn);
+      };
+      socket.on('game-state-update', handleGameState);
+      return () => {
+        socket.off('game-state-update', handleGameState);
+      };
     } else {
       setBoard(initialBoard);
       setTurn('R');
     }
-  }, [playMode]);
+  }, [roomName, playMode]);
+
+  // Emit game state after a move (only in multiplayer)
+  useEffect(() => {
+    if (playMode === 'player') {
+      socket.emit('game-state-update', {
+        roomName,
+        gameId: 'connect4',
+        state: { board, turn }
+      });
+    }
+  }, [board, turn, playMode, roomName]);
 
   useEffect(() => {
     const win = checkWinner(board);
@@ -98,7 +99,6 @@ export function ConnectFour({ roomName, user, isMyTurn, playMode }: { roomName: 
           if (row !== undefined) {
             const newBoard = board.map(arr => [...arr]);
             newBoard[row][col] = 'Y';
-            // Update local state for computer move
             setBoard(newBoard);
             setTurn('R');
           }
@@ -115,7 +115,9 @@ export function ConnectFour({ roomName, user, isMyTurn, playMode }: { roomName: 
       if (row === undefined) return;
       const newBoard = board.map(arr => [...arr]);
       newBoard[row][col] = turn;
-      // TODO: Replace with Socket.IO emit for player move
+      setBoard(newBoard);
+      setTurn(getNextTurn(turn));
+      // Socket emit handled by useEffect
     } else {
       if (turn !== 'R') return;
       const row = [...Array(ROWS).keys()].reverse().find(r => !board[r][col]);

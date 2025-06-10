@@ -1,18 +1,20 @@
 // Dot and Box game logic for two players (simplified demo)
 import { useEffect, useState } from 'react';
+import { socket } from '@/lib/socket';
 
-const ROWS = 12; // 12 rows of boxes
-const COLS = 15; // 15 columns of boxes
+const ROWS = 7; // 7 rows of boxes
+const COLS = 7; // 7 columns of boxes
 const initialLines = Array(ROWS+1).fill(0).map(() => Array(COLS).fill(false)).concat(Array(ROWS).fill(0).map(() => Array(COLS+1).fill(false)));
-const initialBoxes = Array(ROWS).fill(0).map(() => Array(COLS).fill(''));
+const initialBoxes = Array(ROWS).fill(0).map(() => Array(COLS).fill(0));
 
 function getNextTurn(turn: number) {
   return turn === 0 ? 1 : 0;
 }
 
 // Dots and Boxes helpers
-function getCompletedBoxes(lines: boolean[][], rows: number, cols: number) {
-  const boxes = Array(rows).fill(0).map(() => Array(cols).fill(''));
+// Now track which player claimed each box: 1 for Player 1, 2 for Player 2
+function getCompletedBoxes(lines: boolean[][], prevBoxes: number[][], turn: number, rows: number, cols: number) {
+  const boxes = prevBoxes.map(row => [...row]);
   for (let i = 0; i < rows; i++) {
     for (let j = 0; j < cols; j++) {
       if (
@@ -21,14 +23,14 @@ function getCompletedBoxes(lines: boolean[][], rows: number, cols: number) {
         lines[i+1][j] && // bottom
         lines[rows+1+i][j+1] // right
       ) {
-        boxes[i][j] = 'claimed';
+        if (!boxes[i][j]) boxes[i][j] = turn + 1; // 1 for Player 1, 2 for Player 2
       }
     }
   }
   return boxes;
 }
 
-// Smarter Dots and Boxes AI: prefer moves that complete a box, avoid giving boxes
+// --- Smarter Dot and Box AI: complete box, avoid giving box, random ---
 function getBestDotAndBoxMove(lines: boolean[][], boxes: any[][], turn: number, rows: number, cols: number) {
   // 1. Try to complete a box
   for (let i = 0; i < rows+1; i++) for (let j = 0; j < cols; j++) {
@@ -113,18 +115,32 @@ export function DotAndBox({ roomName, user, isMyTurn, playMode }: { roomName: st
 
   useEffect(() => {
     if (playMode === 'player') {
-      const linesRef = ref(db, `rooms/${roomName}/games/dotandbox/lines`);
-      const boxesRef = ref(db, `rooms/${roomName}/games/dotandbox/boxes`);
-      const turnRef = ref(db, `rooms/${roomName}/games/dotandbox/turn`);
-      onValue(linesRef, snap => { if (snap.exists()) setLines(snap.val()); });
-      onValue(boxesRef, snap => { if (snap.exists()) setBoxes(snap.val()); });
-      onValue(turnRef, snap => { if (snap.exists()) setTurn(snap.val()); });
+      socket.emit('join-game-room', { roomName, gameId: 'dotandbox' });
+      const handleGameState = (state: { lines: boolean[][], boxes: any[][], turn: number }) => {
+        setLines(state.lines);
+        setBoxes(state.boxes);
+        setTurn(state.turn);
+      };
+      socket.on('game-state-update', handleGameState);
+      return () => {
+        socket.off('game-state-update', handleGameState);
+      };
     } else {
       setLines(initialLines);
       setBoxes(initialBoxes);
       setTurn(0);
     }
   }, [roomName, playMode]);
+
+  useEffect(() => {
+    if (playMode === 'player') {
+      socket.emit('game-state-update', {
+        roomName,
+        gameId: 'dotandbox',
+        state: { lines, boxes, turn }
+      });
+    }
+  }, [lines, boxes, turn, playMode, roomName]);
 
   useEffect(() => {
     // Calculate scores and winner
@@ -151,135 +167,83 @@ export function DotAndBox({ roomName, user, isMyTurn, playMode }: { roomName: st
   }, [lines, boxes, turn, playMode, winner]);
 
   function handleLineClick(type: 'h'|'v', i: number, j: number) {
-    if (!isMyTurn && playMode === 'player') return;
     if (winner !== null) return;
-    const newLines = lines.map(arr => [...arr]);
-    if (type === 'h') newLines[i][j] = true;
-    else newLines[ROWS+1+i][j] = true;
-    const newBoxes = getCompletedBoxes(newLines, ROWS, COLS);
-    let newTurn = getNextTurn(turn);
-    let boxClaimed = false;
-    for (let x = 0; x < ROWS; x++) for (let y = 0; y < COLS; y++) {
-      if (newBoxes[x][y] === 'claimed' && boxes[x][y] !== 'claimed') {
-        boxClaimed = true;
+    if (playMode === 'player') {
+      if (!isMyTurn) return;
+      const newLines = lines.map(arr => [...arr]);
+      if (type === 'h') newLines[i][j] = true;
+      else newLines[ROWS+1+i][j] = true;
+      const newBoxes = getCompletedBoxes(newLines, boxes, turn, ROWS, COLS);
+      let newTurn = getNextTurn(turn);
+      let boxClaimed = false;
+      for (let x = 0; x < ROWS; x++) for (let y = 0; y < COLS; y++) {
+        if (newBoxes[x][y] !== boxes[x][y] && newBoxes[x][y] !== 0) {
+          boxClaimed = true;
+        }
       }
-    }
-    setLines(newLines);
-    setBoxes(newBoxes);
-    if (!boxClaimed) {
-      setTurn(newTurn);
+      setLines(newLines);
+      setBoxes(newBoxes);
+      if (!boxClaimed) {
+        setTurn(newTurn);
+      }
+      // Socket emit handled by useEffect
+    } else {
+      if (!isMyTurn) return;
+      const newLines = lines.map(arr => [...arr]);
+      if (type === 'h') newLines[i][j] = true;
+      else newLines[ROWS+1+i][j] = true;
+      const newBoxes = getCompletedBoxes(newLines, boxes, turn, ROWS, COLS);
+      let newTurn = getNextTurn(turn);
+      let boxClaimed = false;
+      for (let x = 0; x < ROWS; x++) for (let y = 0; y < COLS; y++) {
+        if (newBoxes[x][y] !== boxes[x][y] && newBoxes[x][y] !== 0) {
+          boxClaimed = true;
+        }
+      }
+      setLines(newLines);
+      setBoxes(newBoxes);
+      if (!boxClaimed) {
+        setTurn(newTurn);
+      }
     }
   }
 
   return (
-    <div className="w-full flex flex-col items-center justify-center py-2 px-1 md:px-4">
-      <div className="mb-2 text-center w-full flex flex-col md:flex-row md:justify-between md:items-center gap-2">
-        <div className="text-base md:text-lg font-semibold text-yellow-400">Scores: Player 1 - {scores[0]} | Player 2 - {scores[1]}</div>
-        {winner && <div className="text-lg md:text-xl font-bold text-yellow-400">{winner}!</div>}
-      </div>
-      <div className="w-full overflow-x-auto flex justify-center">
-        <div className="inline-block bg-gradient-to-br from-slate-900 to-slate-700 p-2 md:p-4 rounded-lg shadow-xl border-2 md:border-4 border-yellow-400">
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateRows: `repeat(${ROWS * 2 + 1}, minmax(12px, 2vw))`,
-              gridTemplateColumns: `repeat(${COLS * 2 + 1}, minmax(12px, 2vw))`,
-              maxWidth: '100vw',
-              minWidth: '0',
-            }}
-            className="touch-manipulation"
-          >
-            {Array.from({ length: ROWS * 2 + 1 }).map((_, row) =>
-              Array.from({ length: COLS * 2 + 1 }).map((_, col) => {
-                // Dots
-                if (row % 2 === 0 && col % 2 === 0) {
-                  return (
-                    <div
-                      key={`dot-${row}-${col}`}
-                      style={{ width: 8, height: 8, borderRadius: 4, background: '#fff', margin: 'auto' }}
-                    />
-                  );
-                }
-                // Horizontal lines
-                if (row % 2 === 0 && col % 2 === 1 && row / 2 < initialLines.length && (col - 1) / 2 < initialLines[0].length) {
-                  const i = row / 2;
-                  const j = (col - 1) / 2;
-                  const filled = lines[i][j];
-                  return (
-                    <div
-                      key={`hline-${i}-${j}`}
-                      onClick={() => handleLineClick('h', i, j)}
-                      style={{
-                        height: 6,
-                        width: 20,
-                        background: filled ? '#facc15' : '#444',
-                        margin: 'auto',
-                        borderRadius: 3,
-                        cursor: filled ? 'default' : 'pointer',
-                        transition: 'background 0.2s'
-                      }}
-                    />
-                  );
-                }
-                // Vertical lines
-                if (row % 2 === 1 && col % 2 === 0 && (row - 1) / 2 < initialLines.length - ROWS - 1 && col / 2 < initialLines[0].length) {
-                  const i = (row - 1) / 2;
-                  const j = col / 2;
-                  const filled = lines[ROWS + 1 + i][j];
-                  return (
-                    <div
-                      key={`vline-${i}-${j}`}
-                      onClick={() => handleLineClick('v', i, j)}
-                      style={{
-                        width: 6,
-                        height: 20,
-                        background: filled ? '#facc15' : '#444',
-                        margin: 'auto',
-                        borderRadius: 3,
-                        cursor: filled ? 'default' : 'pointer',
-                        transition: 'background 0.2s'
-                      }}
-                    />
-                  );
-                }
-                // Boxes
-                if (row % 2 === 1 && col % 2 === 1 && (row - 1) / 2 < boxes.length && (col - 1) / 2 < boxes[0].length) {
-                  const i = (row - 1) / 2;
-                  const j = (col - 1) / 2;
-                  const claimed = boxes[i][j] === 'claimed';
-                  return (
-                    <div
-                      key={`box-${i}-${j}`}
-                      style={{
-                        width: 20,
-                        height: 20,
-                        background: claimed ? (playMode === 'player' ? '#60a5fa' : '#34d399') : 'transparent',
-                        margin: 'auto',
-                        borderRadius: 2,
-                        transition: 'background 0.2s'
-                      }}
-                    />
-                  );
-                }
-                // Empty cell
-                return <div key={`empty-${row}-${col}`} />;
-              })
-            )}
+    <div>
+      <h1>Dot and Box Game</h1>
+      <div>Room: {roomName}</div>
+      <div>{`Player 1 (You): ${scores[0]} | Player 2 (Opponent): ${scores[1]}`}</div>
+      {winner !== null && <div className="winner">{`Winner: ${winner}`}</div>}
+      <div className="grid">
+        {lines.map((row, i) => (
+          <div key={i} className="row">
+            {row.map((line, j) => (
+              <div key={j} className="cell">
+                {i < ROWS && j < COLS && (
+                  <div
+                    className={`box ${boxes[i][j] === 1 ? 'claimed-by-player-1' : boxes[i][j] === 2 ? 'claimed-by-player-2' : ''}`}
+                    style={{ opacity: boxes[i][j] !== 0 ? 1 : 0.2 }}
+                  />
+                )}
+                {i === ROWS && j < COLS && (
+                  <div
+                    className={`dot ${line ? 'connected' : ''}`}
+                    onClick={() => handleLineClick('h', i, j)}
+                  />
+                )}
+                {i < ROWS && j === COLS && (
+                  <div
+                    className={`dot ${line ? 'connected' : ''}`}
+                    onClick={() => handleLineClick('v', i, j)}
+                  />
+                )}
+              </div>
+            ))}
           </div>
-        </div>
+        ))}
       </div>
-      {winner && (
-        <button
-          className="mt-2 bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700"
-          onClick={() => {
-            setLines(initialLines);
-            setBoxes(initialBoxes);
-            setTurn(0);
-            setScores([0,0]);
-            setWinner(null);
-          }}
-        >Replay</button>
-      )}
+      {winner === null && <div>{isMyTurn ? 'Your turn' : 'Opponent\'s turn'}</div>}
+      {playMode === 'computer' && turn === 1 && <div>Computer is thinking...</div>}
     </div>
   );
 }

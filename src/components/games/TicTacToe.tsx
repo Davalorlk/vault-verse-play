@@ -1,5 +1,6 @@
 // Tic Tac Toe game logic for two players
 import { useEffect, useState } from 'react';
+import { socket } from '@/lib/socket';
 
 const initialBoard = [
   ['', '', ''],
@@ -21,6 +22,28 @@ function checkWinner(board: string[][]) {
   return null;
 }
 
+// --- Smarter Tic Tac Toe AI: minimax ---
+function minimaxTicTacToe(board: string[][], turn: string): {score: number, move: [number, number]|null} {
+  const winner = checkWinner(board);
+  if (winner === 'X') return { score: 1, move: null };
+  if (winner === 'O') return { score: -1, move: null };
+  if (board.flat().every(cell => cell)) return { score: 0, move: null };
+  let bestScore = turn === 'X' ? -Infinity : Infinity;
+  let bestMove: [number, number]|null = null;
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
+    if (!board[r][c]) {
+      board[r][c] = turn;
+      const result = minimaxTicTacToe(board, turn === 'X' ? 'O' : 'X');
+      board[r][c] = '';
+      if (turn === 'X' ? result.score > bestScore : result.score < bestScore) {
+        bestScore = result.score;
+        bestMove = [r, c];
+      }
+    }
+  }
+  return { score: bestScore, move: bestMove };
+}
+
 export function TicTacToe({ roomName, user, isMyTurn, playMode }: { roomName: string, user: any, isMyTurn: boolean, playMode: 'player' | 'computer' }) {
   const [board, setBoard] = useState(initialBoard);
   const [turn, setTurn] = useState('X');
@@ -28,7 +51,15 @@ export function TicTacToe({ roomName, user, isMyTurn, playMode }: { roomName: st
 
   useEffect(() => {
     if (playMode === 'player') {
-      // TODO: Add code for joining an existing game and syncing state
+      socket.emit('join-game-room', { roomName, gameId: 'tictactoe' });
+      const handleGameState = (state: { board: string[][], turn: string }) => {
+        setBoard(state.board);
+        setTurn(state.turn);
+      };
+      socket.on('game-state-update', handleGameState);
+      return () => {
+        socket.off('game-state-update', handleGameState);
+      };
     } else {
       setBoard(initialBoard);
       setTurn('X');
@@ -36,17 +67,24 @@ export function TicTacToe({ roomName, user, isMyTurn, playMode }: { roomName: st
   }, [roomName, playMode]);
 
   useEffect(() => {
+    if (playMode === 'player') {
+      socket.emit('game-state-update', {
+        roomName,
+        gameId: 'tictactoe',
+        state: { board, turn }
+      });
+    }
+  }, [board, turn, playMode, roomName]);
+
+  useEffect(() => {
     const win = checkWinner(board);
     if (win) setWinner(win);
     if (playMode === 'computer' && turn === 'O' && !win) {
       setTimeout(() => {
-        // Computer move: pick random empty cell
-        const empty: [number, number][] = [];
-        for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) if (!board[r][c]) empty.push([r, c]);
-        if (empty.length) {
-          const [row, col] = empty[Math.floor(Math.random() * empty.length)];
+        const { move } = minimaxTicTacToe(board, 'O');
+        if (move) {
           const newBoard = board.map(arr => [...arr]);
-          newBoard[row][col] = 'O';
+          newBoard[move[0]][move[1]] = 'O';
           setBoard(newBoard);
           setTurn('X');
         }
@@ -60,8 +98,9 @@ export function TicTacToe({ roomName, user, isMyTurn, playMode }: { roomName: st
       if (!isMyTurn || board[row][col]) return;
       const newBoard = board.map(arr => [...arr]);
       newBoard[row][col] = turn;
-      // TODO: Add code for updating the game state on the server
+      setBoard(newBoard);
       setTurn(getNextTurn(turn));
+      // Socket emit handled by useEffect
     } else {
       if (turn !== 'X' || board[row][col]) return;
       const newBoard = board.map(arr => [...arr]);

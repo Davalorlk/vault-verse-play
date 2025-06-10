@@ -114,7 +114,7 @@ export const GameRoom = ({ gameId, gameName, user, roomName, playMode, onLeave }
     if (newMessage.trim()) {
       const msg = {
         id: Date.now().toString(),
-        user: user.displayName,
+        user: user.displayName || user.username || 'Anonymous',
         avatar: user.avatar,
         message: newMessage,
         timestamp: new Date().toISOString(),
@@ -138,7 +138,16 @@ export const GameRoom = ({ gameId, gameName, user, roomName, playMode, onLeave }
   };
 
   const renderGameBoard = () => {
-    const gameProps = { roomName, user, isMyTurn: true, playMode };
+    // Determine if it's the user's turn
+    let isMyTurn = true;
+    if (playMode === 'player') {
+      // For 2-player games, assign turn based on user/opponent and game state
+      // For Chess, Checkers, Connect4, etc., use turn state from board component
+      // Here, we assume user is always player 1 (X, R, white, etc.) if opponent exists
+      // You may want to sync this with the board state for more advanced logic
+      isMyTurn = !opponent || (user.id < (opponent?.id || 'z') ? true : false); // crude but works for demo
+    }
+    const gameProps = { roomName, user, isMyTurn, playMode };
     switch (gameId) {
       case 'chess':
         return <ChessBoard {...gameProps} />;
@@ -215,64 +224,60 @@ export const GameRoom = ({ gameId, gameName, user, roomName, playMode, onLeave }
     };
   }, [callActive, roomName, user.isInitiator]);
 
+  useEffect(() => {
+    // Join the game room and announce self
+    socket.emit('join-game-room', { roomName, gameId });
+    socket.emit('user-online', {
+      id: user.id,
+      displayName: user.displayName || user.username || 'Anonymous',
+      avatar: user.avatar || '👤',
+      roomName,
+      gameId
+    });
+    // Listen for presence updates
+    const handlePresence = (users) => {
+      // Find opponent (not self, same room/game)
+      const others = users.filter(u => u.roomName === roomName && u.gameId === gameId && u.id !== user.id);
+      setOpponent(others[0] || null);
+    };
+    socket.on('presence-update', handlePresence);
+    // Request current presence
+    socket.emit('get-presence');
+    return () => {
+      socket.off('presence-update', handlePresence);
+    };
+  }, [roomName, gameId, user]);
+
   return (
-    <div className="space-y-4 lg:space-y-0 w-full max-w-7xl mx-auto px-2 md:px-6 flex flex-col lg:flex-row gap-4 min-h-[500px]">
-      {/* Header and player info remain at the top on mobile, side on desktop */}
-      <div className="flex flex-col lg:flex-row w-full gap-4">
-        {/* Header - Always at top */}
-        <Card className="bg-slate-800/50 border-slate-700 flex-1">
-          <CardHeader className="pb-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onLeave}
-                  className="text-slate-400 hover:text-white"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back
-                </Button>
-                <CardTitle className="text-white text-lg md:text-xl">{gameName}</CardTitle>
-              </div>
-              <Badge className="bg-green-500/20 text-green-400">
-                <Users className="h-3 w-3 mr-1" />
-                2/2 Players
-              </Badge>
-            </div>
-          </CardHeader>
-        </Card>
-
-        {/* Player Info */}
-        <Card className="bg-slate-800/50 border-slate-700 flex-1">
-          <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-              <div className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-lg">
-                <span className="text-xl md:text-2xl">{user.avatar}</span>
-                <div>
-                  <div className="font-medium text-white text-sm md:text-base">{user.displayName}</div>
-                  <Badge variant="secondary" className="text-xs bg-yellow-400/20 text-yellow-400">
-                    {user.rank}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="text-center text-white font-bold text-lg">VS</div>
-
-              <div className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-lg">
-                <span className="text-xl md:text-2xl">{opponent?.avatar}</span>
-                <div>
-                  <div className="font-medium text-white text-sm md:text-base">{opponent?.name}</div>
-                  <Badge variant="secondary" className="text-xs bg-blue-400/20 text-blue-400">
-                    {opponent?.rank}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="w-full max-w-7xl mx-auto px-2 md:px-6 flex flex-col gap-4 min-h-[500px]">
+      {/* Navigation Bar */}
+      <div className="flex items-center justify-between bg-slate-900 px-4 py-2 rounded-t-lg shadow mt-20">
+        <button onClick={onLeave} className="text-white flex items-center gap-2 hover:text-yellow-400">
+          <ArrowLeft className="h-5 w-5" />
+          Back
+        </button>
+        <span className="text-xl font-bold text-white">{gameName}</span>
+        <Badge className="flex items-center bg-green-600 text-white px-3 py-1 rounded-full font-semibold text-sm gap-1">
+          <Users className="h-4 w-4 mr-1" />2/2 Players
+        </Badge>
       </div>
-
+      {/* Player Cards and VS */}
+      <div className="flex items-center justify-center gap-8 py-4">
+        {/* Left Player Card */}
+        <div className="bg-slate-800 rounded-lg p-4 flex flex-col items-center w-40 shadow border border-slate-700">
+          <span className="text-3xl mb-2">{user.avatar}</span>
+          <span className="text-white font-semibold">{user.displayName || user.username}</span>
+          <Badge className="bg-blue-600 text-white px-2 py-0.5 rounded mt-1 text-xs">You</Badge>
+        </div>
+        {/* VS */}
+        <div className="text-white font-bold text-2xl mx-4">VS</div>
+        {/* Right Player Card */}
+        <div className="bg-slate-800 rounded-lg p-4 flex flex-col items-center w-40 shadow border border-slate-700">
+          <span className="text-3xl mb-2">{opponent?.avatar || '👤'}</span>
+          <span className="text-white font-semibold">{opponent?.displayName || 'Waiting...'}</span>
+          <Badge className="bg-blue-600 text-white px-2 py-0.5 rounded mt-1 text-xs">{opponent ? 'Opponent' : 'Waiting'}</Badge>
+        </div>
+      </div>
       {/* Game Area - Side by side layout for larger screens */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 w-full">
         {/* Game Board Area */}
@@ -283,7 +288,6 @@ export const GameRoom = ({ gameId, gameName, user, roomName, playMode, onLeave }
             </CardContent>
           </Card>
         </div>
-
         {/* Chat Area - Side panel on desktop, below on mobile */}
         <div className="lg:col-span-1">
           <Card className="bg-slate-800/50 border-slate-700 h-full flex flex-col">
@@ -293,7 +297,6 @@ export const GameRoom = ({ gameId, gameName, user, roomName, playMode, onLeave }
                 Game Chat
               </CardTitle>
             </CardHeader>
-
             <CardContent className="flex-1 flex flex-col p-0 min-h-0 bg-gradient-to-br from-slate-900 to-slate-800 rounded-b-lg shadow-inner">
               {/* Voice chat UI */}
               {callActive && (
@@ -341,9 +344,7 @@ export const GameRoom = ({ gameId, gameName, user, roomName, playMode, onLeave }
                   <div ref={messagesEndRef} />
                 </div>
               </ScrollArea>
-
               <Separator className="bg-slate-700" />
-
               <div className="p-3 md:p-4 flex flex-col gap-2">
                 <div className="flex gap-2">
                   <Input
