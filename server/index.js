@@ -6,10 +6,13 @@ const { Pool } = require('pg');
 const cors = require('cors');
 
 const app = express();
-const allowedOrigin = 'https://fantastic-space-engine-rq4rrqj44qwfxwwr-8080.app.github.dev';
-app.use(cors({ origin: allowedOrigin }));
+const allowedOrigins = [
+  'https://fantastic-space-engine-rq4rrqj44qwfxwwr-8080.app.github.dev',
+  'https://vault-verse-play.vercel.app'
+];
+app.use(cors({ origin: allowedOrigins }));
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: allowedOrigin } });
+const io = new Server(server, { cors: { origin: allowedOrigins } });
 
 // Neon Postgres connection (replace with your Neon connection string)
 const pool = new Pool({
