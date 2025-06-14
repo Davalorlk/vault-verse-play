@@ -15,7 +15,10 @@ const TicTacToe: GameType = {
       if (G.cells[id] !== null) {
         return;
       }
-      G.cells[id] = playerID === '0' ? 'X' : 'O';
+      // Create a new array instead of mutating directly
+      const newCells = [...G.cells];
+      newCells[id] = playerID === '0' ? 'X' : 'O';
+      return { ...G, cells: newCells };
     },
   },
 
