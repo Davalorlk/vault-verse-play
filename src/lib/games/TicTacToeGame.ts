@@ -17,7 +17,7 @@ const TicTacToe = {
     },
   },
 
-  endIf: (G: any, ctx: any) => {
+  endIf: ({ G, ctx }: any) => {
     if (IsVictory(G.cells)) {
       return { winner: ctx.currentPlayer };
     }

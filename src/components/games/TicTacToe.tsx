@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { socket } from '@/lib/socket';
 import { Client } from 'boardgame.io/react';
@@ -61,7 +60,6 @@ function TicTacToeBoard({ G, ctx, moves, isActive }: any) {
 const TicTacToeClient = Client({
   game: TicTacToeGame,
   board: TicTacToeBoard,
-  multiplayer: { local: true },
 });
 
 export function TicTacToe({ roomName, user, isMyTurn, playMode }: { roomName: string, user: any, isMyTurn: boolean, playMode: 'player' | 'computer' }) {
