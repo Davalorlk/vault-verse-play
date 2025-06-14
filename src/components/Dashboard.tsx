@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -39,11 +40,6 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
     const updated = { ...userStats, ...newStats };
     setUserStats(updated);
     sessionStorage.setItem('mindVaultUser', JSON.stringify(updated));
-    // Backup to Firebase
-    // set(ref(db, `users/${updated.uid}`), {
-    //   ...updated,
-    //   lastActive: serverTimestamp(),
-    // });
   };
 
   const handlePurchase = (item: any) => {
@@ -51,7 +47,6 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
       const newCoins = userStats.coins - item.price;
       updateUserStats({ coins: newCoins });
       console.log(`Purchased ${item.name} for ${item.price} coins`);
-      // You could add a toast notification here
     }
   };
 
@@ -74,85 +69,76 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
     };
   }, [userStats]);
 
-  // Real-time online and total players
   useEffect(() => {
-    // COMMENTED OUT: Firebase logic for online and total players
-    // const usersRef = ref(db, 'users');
-    // onValue(usersRef, snap => {
-    //   const users = snap.val() ? Object.values(snap.val()) : [];
-    //   setTotalPlayers(users.length);
-    // });
-    // const presenceRef = ref(db, 'presence');
-    // onValue(presenceRef, snap => {
-    //   setOnlineCount(snap.val() ? Object.keys(snap.val()).length : 0);
-    // });
+    // Real-time online and total players logic would go here
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 w-full">
-      {/* App Header */}
-      <header className="w-full flex items-center justify-between px-4 md:px-8 py-3 bg-slate-900/80 shadow-lg fixed top-0 left-0 z-50">
-        <div className="flex items-center gap-3">
-          <Brain className="h-7 w-7 text-yellow-400" />
-          <span className="text-2xl font-bold text-white tracking-wide">MIND VAULT</span>
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 w-full">
+      {/* Mobile-First Header */}
+      <header className="w-full flex items-center justify-between px-3 py-2 bg-slate-900/90 shadow-lg fixed top-0 left-0 z-50 backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+          <Brain className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-400" />
+          <span className="text-lg sm:text-xl font-bold text-white tracking-wide">MIND VAULT</span>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-slate-800 px-3 py-1 rounded-full">
-            <span className="text-lg">{user.avatar || '👤'}</span>
-            <span className="text-white font-semibold">{user.displayName || user.username}</span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-slate-800 px-2 py-1 rounded-full">
+            <span className="text-sm">{user.avatar || '👤'}</span>
+            <span className="text-white font-semibold text-sm hidden sm:inline">{user.displayName || user.username}</span>
           </div>
           <Button
             onClick={onLogout}
-            className="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded shadow text-sm"
+            className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded shadow text-xs"
           >
-            Log out
+            <LogOut className="h-3 w-3 sm:hidden" />
+            <span className="hidden sm:inline">Log out</span>
           </Button>
         </div>
       </header>
-      <div className="w-full max-w-7xl px-2 md:px-6 flex flex-col gap-8 items-center justify-center pt-20">
-        <div className="py-6 flex flex-col gap-6 w-full">
+
+      {/* Main Content */}
+      <main className="flex-1 w-full pt-16 pb-6 px-3">
+        <div className="w-full max-w-7xl mx-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="flex flex-wrap gap-2 justify-center w-full mb-4">
-              <TabsTrigger value="puzzles" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900 text-xs md:text-sm">
-                <Brain className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
-                <span className="hidden sm:inline">Puzzles</span>
-                <span className="sm:hidden">Quiz</span>
+            {/* Mobile-First Tab Navigation */}
+            <TabsList className="grid grid-cols-3 sm:grid-cols-6 gap-1 w-full mb-4 h-auto p-1">
+              <TabsTrigger value="puzzles" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900 text-xs px-2 py-2 flex flex-col sm:flex-row items-center gap-1">
+                <Brain className="h-3 w-3" />
+                <span className="text-[10px] sm:text-xs">Quiz</span>
               </TabsTrigger>
-              <TabsTrigger value="games" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900 text-xs md:text-sm">
-                <Gamepad2 className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
-                <span className="hidden sm:inline">Games</span>
-                <span className="sm:hidden">Play</span>
+              <TabsTrigger value="games" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900 text-xs px-2 py-2 flex flex-col sm:flex-row items-center gap-1">
+                <Gamepad2 className="h-3 w-3" />
+                <span className="text-[10px] sm:text-xs">Games</span>
               </TabsTrigger>
-              <TabsTrigger value="shop" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900 text-xs md:text-sm">
-                <Gift className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
-                Shop
+              <TabsTrigger value="shop" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900 text-xs px-2 py-2 flex flex-col sm:flex-row items-center gap-1">
+                <Gift className="h-3 w-3" />
+                <span className="text-[10px] sm:text-xs">Shop</span>
               </TabsTrigger>
-              <TabsTrigger value="chat" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900 text-xs md:text-sm">
-                <MessageCircle className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
-                Chat
+              <TabsTrigger value="chat" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900 text-xs px-2 py-2 flex flex-col sm:flex-row items-center gap-1">
+                <MessageCircle className="h-3 w-3" />
+                <span className="text-[10px] sm:text-xs">Chat</span>
               </TabsTrigger>
-              <TabsTrigger value="leaderboard" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900 text-xs md:text-sm">
-                <Trophy className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
-                <span className="hidden sm:inline">Leaderboard</span>
-                <span className="sm:hidden">Rank</span>
+              <TabsTrigger value="leaderboard" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900 text-xs px-2 py-2 flex flex-col sm:flex-row items-center gap-1">
+                <Trophy className="h-3 w-3" />
+                <span className="text-[10px] sm:text-xs">Rank</span>
               </TabsTrigger>
-              <TabsTrigger value="profile" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900 text-xs md:text-sm">
-                <User className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
-                Profile
+              <TabsTrigger value="profile" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-slate-900 text-xs px-2 py-2 flex flex-col sm:flex-row items-center gap-1">
+                <User className="h-3 w-3" />
+                <span className="text-[10px] sm:text-xs">Profile</span>
               </TabsTrigger>
             </TabsList>
 
-            {/* Stats Bar */}
+            {/* Mobile-First Stats Bar for Profile */}
             {activeTab === 'profile' && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
                 <Card className="bg-slate-800/50 border-slate-700">
-                  <CardContent className="p-3 md:p-4">
-                    <div className="flex items-center space-x-2 md:space-x-3">
-                      <div className="p-1.5 md:p-2 bg-blue-500/20 rounded-lg">
-                        <Target className="h-4 w-4 md:h-5 md:w-5 text-blue-400" />
+                  <CardContent className="p-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-1.5 bg-blue-500/20 rounded-lg">
+                        <Target className="h-4 w-4 text-blue-400" />
                       </div>
                       <div>
-                        <div className="text-sm md:text-lg font-semibold text-white">{userStats.puzzlesSolved}</div>
+                        <div className="text-sm font-semibold text-white">{userStats.puzzlesSolved}</div>
                         <div className="text-xs text-slate-400">Puzzles</div>
                       </div>
                     </div>
@@ -160,13 +146,13 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
                 </Card>
 
                 <Card className="bg-slate-800/50 border-slate-700">
-                  <CardContent className="p-3 md:p-4">
-                    <div className="flex items-center space-x-2 md:space-x-3">
-                      <div className="p-1.5 md:p-2 bg-green-500/20 rounded-lg">
-                        <Star className="h-4 w-4 md:h-5 md:w-5 text-green-400" />
+                  <CardContent className="p-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-1.5 bg-green-500/20 rounded-lg">
+                        <Star className="h-4 w-4 text-green-400" />
                       </div>
                       <div>
-                        <div className="text-sm md:text-lg font-semibold text-white">{userStats.experience}</div>
+                        <div className="text-sm font-semibold text-white">{userStats.experience}</div>
                         <div className="text-xs text-slate-400">XP</div>
                       </div>
                     </div>
@@ -174,13 +160,13 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
                 </Card>
 
                 <Card className="bg-slate-800/50 border-slate-700">
-                  <CardContent className="p-3 md:p-4">
-                    <div className="flex items-center space-x-2 md:space-x-3">
-                      <div className="p-1.5 md:p-2 bg-purple-500/20 rounded-lg">
-                        <Crown className="h-4 w-4 md:h-5 md:w-5 text-purple-400" />
+                  <CardContent className="p-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-1.5 bg-purple-500/20 rounded-lg">
+                        <Crown className="h-4 w-4 text-purple-400" />
                       </div>
                       <div>
-                        <div className="text-sm md:text-lg font-semibold text-white">Level {userStats.level}</div>
+                        <div className="text-sm font-semibold text-white">Level {userStats.level}</div>
                         <div className="text-xs text-slate-400">Level</div>
                       </div>
                     </div>
@@ -188,13 +174,13 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
                 </Card>
 
                 <Card className="bg-slate-800/50 border-slate-700">
-                  <CardContent className="p-3 md:p-4">
-                    <div className="flex items-center space-x-2 md:space-x-3">
-                      <div className="p-1.5 md:p-2 bg-yellow-500/20 rounded-lg">
-                        <Coins className="h-4 w-4 md:h-5 md:w-5 text-yellow-400" />
+                  <CardContent className="p-3">
+                    <div className="flex items-center space-x-2">
+                      <div className="p-1.5 bg-yellow-500/20 rounded-lg">
+                        <Coins className="h-4 w-4 text-yellow-400" />
                       </div>
                       <div>
-                        <div className="text-sm md:text-lg font-semibold text-white">{userStats.coins}</div>
+                        <div className="text-sm font-semibold text-white">{userStats.coins}</div>
                         <div className="text-xs text-slate-400">Coins</div>
                       </div>
                     </div>
@@ -204,32 +190,32 @@ export const Dashboard = ({ user, onLogout }: DashboardProps) => {
             )}
 
             {/* Tab Content */}
-            <TabsContent value="puzzles">
+            <TabsContent value="puzzles" className="mt-0">
               <PuzzleGame user={userStats} onUpdateUser={updateUserStats} />
             </TabsContent>
 
-            <TabsContent value="games">
+            <TabsContent value="games" className="mt-0">
               <BoardGames user={userStats} />
             </TabsContent>
 
-            <TabsContent value="shop">
+            <TabsContent value="shop" className="mt-0">
               <Shop user={userStats} onPurchase={handlePurchase} />
             </TabsContent>
 
-            <TabsContent value="chat">
+            <TabsContent value="chat" className="mt-0">
               <GlobalChat user={userStats} />
             </TabsContent>
 
-            <TabsContent value="leaderboard">
+            <TabsContent value="leaderboard" className="mt-0">
               <Leaderboard currentUser={userStats} />
             </TabsContent>
 
-            <TabsContent value="profile">
+            <TabsContent value="profile" className="mt-0">
               <UserProfile user={userStats} onUpdateUser={updateUserStats} />
             </TabsContent>
           </Tabs>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
