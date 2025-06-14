@@ -23,11 +23,13 @@ export function TicTacToe({ roomName, user, isMyTurn, playMode }: { roomName: st
       socket.emit('join-game-room', { roomName, gameId: 'tictactoe' });
       
       socket.on('game-initialized', (data: { symbol: string, gameStarted: boolean }) => {
+        console.log('Game initialized:', data);
         setMySymbol(data.symbol);
         setGameStarted(data.gameStarted);
       });
       
       const handleGameState = (state: any) => {
+        console.log('Game state update received:', state);
         if (state.board) {
           game.loadState(state);
           setBoard([...game.board]);
@@ -37,6 +39,7 @@ export function TicTacToe({ roomName, user, isMyTurn, playMode }: { roomName: st
       };
       
       const handlePlayerJoined = (data: { playersCount: number }) => {
+        console.log('Player joined:', data);
         if (data.playersCount === 2) {
           setGameStarted(true);
         }
@@ -76,6 +79,7 @@ export function TicTacToe({ roomName, user, isMyTurn, playMode }: { roomName: st
         console.log('Game not started yet, waiting for another player...');
         return;
       }
+      // Fix: Check if it's actually my turn based on current game state
       if (turn !== mySymbol) {
         console.log(`Not your turn! Current turn: ${turn}, Your symbol: ${mySymbol}`);
         return;
@@ -83,12 +87,18 @@ export function TicTacToe({ roomName, user, isMyTurn, playMode }: { roomName: st
     }
     
     if (game.isValidMove(row, col)) {
+      console.log(`Making move: ${row}, ${col} as ${mySymbol}`);
       game.makeMove(row, col);
       setBoard([...game.board]);
       setTurn(game.currentPlayer);
       setWinner(game.winner);
       
       if (playMode === 'player') {
+        console.log('Emitting game state update:', {
+          board: game.board,
+          currentPlayer: game.currentPlayer,
+          winner: game.winner
+        });
         socket.emit('game-state-update', {
           roomName,
           gameId: 'tictactoe',
@@ -122,6 +132,9 @@ export function TicTacToe({ roomName, user, isMyTurn, playMode }: { roomName: st
               </div>
               <div className={`font-bold text-sm sm:text-base ${isMyTurnToPlay ? 'text-green-500' : 'text-red-500'}`}>
                 {isMyTurnToPlay ? 'Your turn!' : `Waiting for ${turn} to move...`}
+              </div>
+              <div className="text-xs text-slate-400">
+                Current turn: {turn} | Game started: {gameStarted ? 'Yes' : 'No'}
               </div>
             </div>
           )}
