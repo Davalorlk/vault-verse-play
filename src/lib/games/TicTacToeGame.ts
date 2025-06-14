@@ -1,6 +1,7 @@
-import { Game } from 'boardgame.io/core';
 
-const TicTacToe: any = Game({
+import { Game } from 'boardgame.io';
+
+const TicTacToe = Game({
   setup: () => ({
     cells: Array(9).fill(null),
   }),
