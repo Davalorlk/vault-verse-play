@@ -1,6 +1,6 @@
-import { Game } from 'boardgame.io';
+import { Game } from 'boardgame.io/core';
 
-const ConnectFour = Game({
+const ConnectFour: any = Game({
   setup: () => ({
     board: Array(6).fill(null).map(() => Array(7).fill(null)),
     winner: null,
@@ -12,7 +12,7 @@ const ConnectFour = Game({
   },
 
   moves: {
-    dropPiece: (G, ctx, col) => {
+    dropPiece: (G: any, ctx: any, col: number) => {
       // Find the lowest empty row in the column
       for (let row = 5; row >= 0; row--) {
         if (G.board[row][col] === null) {
@@ -23,14 +23,14 @@ const ConnectFour = Game({
     },
   },
 
-  endIf: (G, ctx) => {
+  endIf: (G: any, ctx: any) => {
     if (CheckWinner(G.board, ctx.currentPlayer)) {
       return { winner: ctx.currentPlayer };
     }
   },
 });
 
-function CheckWinner(board, player) {
+function CheckWinner(board: any, player: any) {
   const directions = [
     [0, 1], [1, 0], [1, 1], [1, -1]
   ];

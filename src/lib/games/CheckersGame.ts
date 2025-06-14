@@ -1,6 +1,6 @@
-import { Game } from 'boardgame.io';
+import { Game } from 'boardgame.io/core';
 
-const Checkers = Game({
+const Checkers: any = Game({
   setup: () => ({
     board: [
       [null, 'b', null, 'b', null, 'b', null, 'b'],
@@ -21,7 +21,7 @@ const Checkers = Game({
   },
 
   moves: {
-    move: (G, ctx, from, to) => {
+    move: (G: any, ctx: any, from: any, to: any) => {
       const piece = G.board[from.row][from.col];
       if (piece && IsValidCheckersMove(G.board, from, to, ctx.currentPlayer)) {
         G.board[to.row][to.col] = piece;
@@ -35,13 +35,13 @@ const Checkers = Game({
     },
   },
 
-  endIf: (G, ctx) => {
+  endIf: (G: any, ctx: any) => {
     // Simplified end condition
     return null;
   },
 });
 
-function IsValidCheckersMove(board, from, to, player) {
+function IsValidCheckersMove(board: any, from: any, to: any, player: any) {
   const piece = board[from.row][from.col];
   if (!piece) return false;
   

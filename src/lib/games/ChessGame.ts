@@ -1,6 +1,6 @@
-import { Game } from 'boardgame.io';
+import { Game } from 'boardgame.io/core';
 
-const Chess = Game({
+const Chess: any = Game({
   setup: () => ({
     board: [
       ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
@@ -21,7 +21,7 @@ const Chess = Game({
   },
 
   moves: {
-    move: (G, ctx, from, to) => {
+    move: (G: any, ctx: any, from: any, to: any) => {
       const piece = G.board[from.row][from.col];
       if (piece && IsValidMove(G.board, from, to, ctx.currentPlayer)) {
         G.board[to.row][to.col] = piece;
@@ -30,14 +30,14 @@ const Chess = Game({
     },
   },
 
-  endIf: (G, ctx) => {
+  endIf: (G: any, ctx: any) => {
     if (IsCheckmate(G.board, ctx.currentPlayer)) {
       return { winner: ctx.currentPlayer === '0' ? '1' : '0' };
     }
   },
 });
 
-function IsValidMove(board, from, to, player) {
+function IsValidMove(board: any, from: any, to: any, player: any) {
   // Simplified move validation
   const piece = board[from.row][from.col];
   if (!piece) return false;
@@ -48,7 +48,7 @@ function IsValidMove(board, from, to, player) {
   return isWhite === currentPlayerIsWhite;
 }
 
-function IsCheckmate(board, player) {
+function IsCheckmate(board: any, player: any) {
   // Simplified checkmate detection
   return false;
 }
