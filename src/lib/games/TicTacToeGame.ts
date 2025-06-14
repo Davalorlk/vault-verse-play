@@ -1,4 +1,7 @@
-const TicTacToe = {
+
+import { Game } from 'boardgame.io';
+
+const TicTacToe = Game({
   setup: () => ({
     cells: Array(9).fill(null),
   }),
@@ -9,11 +12,11 @@ const TicTacToe = {
   },
 
   moves: {
-    clickCell: (G: any, ctx: any, id: number) => {
+    clickCell: ({ G, playerID }: any, id: number) => {
       if (G.cells[id] !== null) {
         return;
       }
-      G.cells[id] = ctx.currentPlayer === '0' ? 'X' : 'O';
+      G.cells[id] = playerID === '0' ? 'X' : 'O';
     },
   },
 
@@ -25,7 +28,7 @@ const TicTacToe = {
       return { draw: true };
     }
   },
-};
+});
 
 // Helper functions
 function IsVictory(cells: any[]) {
