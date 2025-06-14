@@ -1,4 +1,4 @@
-import { Game } from 'boardgame.io/core';
+import { Game } from 'boardgame.io';
 
 const TicTacToe = Game({
   setup: () => ({
