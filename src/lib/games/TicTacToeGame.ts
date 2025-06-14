@@ -1,8 +1,8 @@
-import { Game as GameType } from 'boardgame.io';
 
-const TicTacToe: GameType = {
+const TicTacToe: any = {
   setup: () => ({
     cells: Array(9).fill(null),
+    winner: null,
   }),
 
   turn: {
@@ -11,18 +11,15 @@ const TicTacToe: GameType = {
   },
 
   moves: {
-    clickCell: ({ G, playerID }: any, id: number) => {
+    clickCell: (G: any, ctx: any, id: number) => {
       if (G.cells[id] !== null) {
         return;
       }
-      // Create a new array instead of mutating directly
-      const newCells = [...G.cells];
-      newCells[id] = playerID === '0' ? 'X' : 'O';
-      return { ...G, cells: newCells };
+      G.cells[id] = ctx.currentPlayer;
     },
   },
 
-  endIf: ({ G, ctx }: any) => {
+  endIf: (G: any, ctx: any) => {
     if (IsVictory(G.cells)) {
       return { winner: ctx.currentPlayer };
     }
@@ -57,7 +54,6 @@ function IsDraw(cells: any[]) {
   return cells.filter(c => c === null).length === 0;
 }
 
-// Keep the existing TicTacToeGame class for backward compatibility
 export class TicTacToeGame {
   board: string[][];
   currentPlayer: string;
