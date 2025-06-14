@@ -1,4 +1,5 @@
-import { Game } from 'boardgame.io/core';
+
+import { Game } from 'boardgame.io';
 
 const Gomoku: any = Game({
   setup: (ctx: any, setupData: any) => ({

@@ -1,4 +1,5 @@
-import { Game } from 'boardgame.io/core';
+
+import { Game } from 'boardgame.io';
 
 const Checkers: any = Game({
   setup: () => ({
