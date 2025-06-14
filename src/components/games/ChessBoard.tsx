@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { socket } from '@/lib/socket';
 import { ChessGame } from '@/lib/games/ChessGame';
@@ -14,6 +15,8 @@ export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: s
   const [possibleMoves, setPossibleMoves] = useState<{row:number,col:number}[]>([]);
   const [winner, setWinner] = useState<string|null>(null);
   const [turn, setTurn] = useState('white');
+  const [mySymbol, setMySymbol] = useState<string>('white');
+  const [gameStarted, setGameStarted] = useState(false);
 
   useEffect(() => {
     const game = new ChessGame();
@@ -26,7 +29,14 @@ export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: s
     if (playMode === 'player' && chess) {
       socket.emit('join-game-room', { roomName, gameId: 'chess' });
       
+      socket.on('game-initialized', (data: { symbol: string, gameStarted: boolean }) => {
+        console.log('Chess game initialized:', data);
+        setMySymbol(data.symbol);
+        setGameStarted(data.gameStarted);
+      });
+      
       const handleGameState = (state: any) => {
+        console.log('Chess game state update received:', state);
         if (state.fen) {
           chess.load(state.fen);
           setBoard([...chess.board]);
@@ -35,22 +45,23 @@ export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: s
         }
       };
       
+      const handlePlayerJoined = (data: { playersCount: number }) => {
+        console.log('Chess player joined:', data);
+        if (data.playersCount === 2) {
+          setGameStarted(true);
+        }
+      };
+      
       socket.on('game-state-update', handleGameState);
+      socket.on('player-joined', handlePlayerJoined);
+      
       return () => {
         socket.off('game-state-update', handleGameState);
+        socket.off('game-initialized');
+        socket.off('player-joined', handlePlayerJoined);
       };
     }
   }, [roomName, playMode, chess]);
-
-  useEffect(() => {
-    if (playMode === 'player' && chess) {
-      socket.emit('game-state-update', {
-        roomName,
-        gameId: 'chess',
-        state: { fen: chess.fen(), turn: chess.turn }
-      });
-    }
-  }, [board, turn, playMode, roomName, chess]);
 
   useEffect(() => {
     if (chess && chess.isGameOver()) {
@@ -63,7 +74,18 @@ export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: s
   }, [chess, board]);
 
   function handleCellClick(row: number, col: number) {
-    if (!chess || winner || (playMode === 'player' && !isMyTurn)) return;
+    if (!chess || winner) return;
+    
+    if (playMode === 'player') {
+      if (!gameStarted) {
+        console.log('Chess game not started yet, waiting for another player...');
+        return;
+      }
+      if (turn !== mySymbol) {
+        console.log(`Not your turn! Current turn: ${turn}, Your symbol: ${mySymbol}`);
+        return;
+      }
+    }
 
     if (!selected) {
       const piece = board[row][col];
@@ -84,10 +106,26 @@ export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: s
     try {
       const move = chess.move({ from, to });
       if (move) {
+        console.log(`Making Chess move: ${from} to ${to} as ${mySymbol}`);
         setBoard([...chess.board]);
         setTurn(chess.turn);
         setSelected(null);
         setPossibleMoves([]);
+        
+        if (playMode === 'player') {
+          console.log('Emitting Chess game state update:', {
+            fen: chess.fen(),
+            turn: chess.turn
+          });
+          socket.emit('game-state-update', {
+            roomName,
+            gameId: 'chess',
+            state: { 
+              fen: chess.fen(), 
+              turn: chess.turn 
+            }
+          });
+        }
       }
     } catch (error) {
       setSelected(null);
@@ -97,8 +135,33 @@ export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: s
 
   if (!chess) return <div>Loading chess...</div>;
 
+  const isMyTurnToPlay = playMode === 'computer' || (playMode === 'player' && turn === mySymbol && gameStarted);
+
   return (
-    <div className="flex flex-col items-center justify-center w-full h-full">
+    <div className="flex flex-col items-center justify-center w-full h-full px-3">
+      {/* Mobile-First Status Display */}
+      {playMode === 'player' && (
+        <div className="mb-4 text-center w-full">
+          {!gameStarted ? (
+            <div className="text-yellow-500 font-bold text-sm sm:text-base p-3 bg-slate-800/50 rounded-lg">
+              Waiting for another player to join...
+            </div>
+          ) : (
+            <div className="space-y-2 p-3 bg-slate-800/50 rounded-lg">
+              <div className="text-white text-sm">
+                You are: <span className="font-bold text-yellow-500 text-lg">{mySymbol}</span>
+              </div>
+              <div className={`font-bold text-sm sm:text-base ${isMyTurnToPlay ? 'text-green-500' : 'text-red-500'}`}>
+                {isMyTurnToPlay ? 'Your turn!' : `Waiting for ${turn} to move...`}
+              </div>
+              <div className="text-xs text-slate-400">
+                Current turn: {turn} | Game started: {gameStarted ? 'Yes' : 'No'}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
       <div className="inline-block border-4 border-yellow-400 rounded-lg shadow-xl bg-gradient-to-br from-slate-900 to-slate-700 p-2">
         <div
           className="grid"
@@ -119,7 +182,8 @@ export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: s
                   className={`w-12 h-12 flex items-center justify-center text-3xl font-bold select-none cursor-pointer transition-all duration-100
                     ${isLight ? 'bg-slate-200' : 'bg-slate-600'}
                     ${isSelected ? 'ring-4 ring-yellow-400 z-10' : ''}
-                    ${isMove ? 'ring-4 ring-green-400 z-10' : ''}`}
+                    ${isMove ? 'ring-4 ring-green-400 z-10' : ''}
+                    ${!isMyTurnToPlay ? 'opacity-70' : ''}`}
                   style={{ color: cell && cell === cell.toUpperCase() ? '#fff' : '#222' }}
                   onClick={() => handleCellClick(row, col)}
                 >
@@ -130,19 +194,29 @@ export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: s
           )}
         </div>
       </div>
+      
       {winner && (
-        <button
-          className="mt-2 bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700"
-          onClick={() => {
-            const newGame = new ChessGame();
-            setChess(newGame);
-            setBoard(newGame.board);
-            setTurn(newGame.turn);
-            setSelected(null);
-            setPossibleMoves([]);
-            setWinner(null);
-          }}
-        >Replay</button>
+        <div className="mt-4 text-center">
+          <div className="text-green-500 font-bold text-lg mb-2">
+            {winner === 'Draw' ? 'It\'s a draw!' : 
+             playMode === 'computer' ? `Winner: ${winner}` :
+             winner === mySymbol ? 'You won! 🎉' : 'You lost! 😢'}
+          </div>
+          <button
+            className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700"
+            onClick={() => {
+              const newGame = new ChessGame();
+              setChess(newGame);
+              setBoard(newGame.board);
+              setTurn(newGame.turn);
+              setSelected(null);
+              setPossibleMoves([]);
+              setWinner(null);
+              setMySymbol('white');
+              setGameStarted(false);
+            }}
+          >Replay</button>
+        </div>
       )}
     </div>
   );
