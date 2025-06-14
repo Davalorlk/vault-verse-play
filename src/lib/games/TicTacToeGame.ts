@@ -1,7 +1,6 @@
+import { Game as GameType } from 'boardgame.io';
 
-import { Game } from 'boardgame.io';
-
-const TicTacToe = Game({
+const TicTacToe: GameType = {
   setup: () => ({
     cells: Array(9).fill(null),
   }),
@@ -28,7 +27,7 @@ const TicTacToe = Game({
       return { draw: true };
     }
   },
-});
+};
 
 // Helper functions
 function IsVictory(cells: any[]) {
