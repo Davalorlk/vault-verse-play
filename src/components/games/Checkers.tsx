@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { socket } from '@/lib/socket';
-import { Checkers } from 'papergames.io';
+import { Checkers as CheckersGame } from 'papergames.io';
 
 export function Checkers({ roomName, user, isMyTurn, playMode }: { roomName: string, user: any, isMyTurn: boolean, playMode: 'player' | 'computer' }) {
   const [game, setGame] = useState<any>(null);
@@ -12,7 +12,7 @@ export function Checkers({ roomName, user, isMyTurn, playMode }: { roomName: str
   const [winner, setWinner] = useState<string|null>(null);
 
   useEffect(() => {
-    const newGame = new Checkers();
+    const newGame = new CheckersGame();
     setGame(newGame);
     setBoard(newGame.board);
     setTurn(newGame.currentPlayer);
@@ -134,7 +134,7 @@ export function Checkers({ roomName, user, isMyTurn, playMode }: { roomName: str
           <button
             className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700"
             onClick={() => {
-              const newGame = new Checkers();
+              const newGame = new CheckersGame();
               setGame(newGame);
               setBoard(newGame.board);
               setTurn(newGame.currentPlayer);

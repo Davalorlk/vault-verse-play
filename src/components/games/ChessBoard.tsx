@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { socket } from '@/lib/socket';
-import { Chess } from 'papergames.io';
+import { Chess as ChessGame } from 'papergames.io';
 
 const pieceSymbols: Record<string, string> = {
   K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙',
@@ -17,7 +17,7 @@ export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: s
   const [turn, setTurn] = useState('white');
 
   useEffect(() => {
-    const game = new Chess();
+    const game = new ChessGame();
     setChess(game);
     setBoard(game.board);
     setTurn(game.turn);
@@ -135,7 +135,7 @@ export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: s
         <button
           className="mt-2 bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700"
           onClick={() => {
-            const newGame = new Chess();
+            const newGame = new ChessGame();
             setChess(newGame);
             setBoard(newGame.board);
             setTurn(newGame.turn);

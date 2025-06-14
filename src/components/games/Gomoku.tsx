@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { socket } from '@/lib/socket';
-import { Gomoku } from 'papergames.io';
+import { Gomoku as GomokuGame } from 'papergames.io';
 
 export function Gomoku({ roomName, user, isMyTurn, playMode }: { roomName: string, user: any, isMyTurn: boolean, playMode: 'player' | 'computer' }) {
   const [game, setGame] = useState<any>(null);
@@ -10,7 +10,7 @@ export function Gomoku({ roomName, user, isMyTurn, playMode }: { roomName: strin
   const [winner, setWinner] = useState<string|null>(null);
 
   useEffect(() => {
-    const newGame = new Gomoku(15); // 15x15 board
+    const newGame = new GomokuGame(15); // 15x15 board
     setGame(newGame);
     setBoard(newGame.board);
     setTurn(newGame.currentPlayer);

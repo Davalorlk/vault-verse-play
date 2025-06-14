@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { socket } from '@/lib/socket';
-import { ConnectFour } from 'papergames.io';
+import { ConnectFour as ConnectFourGame } from 'papergames.io';
 
 export function ConnectFour({ roomName, user, isMyTurn, playMode }: { roomName: string, user: any, isMyTurn: boolean, playMode: 'player' | 'computer' }) {
   const [game, setGame] = useState<any>(null);
@@ -10,7 +10,7 @@ export function ConnectFour({ roomName, user, isMyTurn, playMode }: { roomName: 
   const [winner, setWinner] = useState<string|null>(null);
 
   useEffect(() => {
-    const newGame = new ConnectFour();
+    const newGame = new ConnectFourGame();
     setGame(newGame);
     setBoard(newGame.board);
     setTurn(newGame.currentPlayer);
@@ -96,7 +96,7 @@ export function ConnectFour({ roomName, user, isMyTurn, playMode }: { roomName: 
         <button
           className="mt-2 bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700"
           onClick={() => {
-            const newGame = new ConnectFour();
+            const newGame = new ConnectFourGame();
             setGame(newGame);
             setBoard(newGame.board);
             setTurn(newGame.currentPlayer);

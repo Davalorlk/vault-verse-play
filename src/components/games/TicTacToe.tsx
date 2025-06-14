@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { socket } from '@/lib/socket';
-import { TicTacToe } from 'papergames.io';
+import { TicTacToe as TicTacToeGame } from 'papergames.io';
 
 export function TicTacToe({ roomName, user, isMyTurn, playMode }: { roomName: string, user: any, isMyTurn: boolean, playMode: 'player' | 'computer' }) {
   const [game, setGame] = useState<any>(null);
@@ -10,7 +10,7 @@ export function TicTacToe({ roomName, user, isMyTurn, playMode }: { roomName: st
   const [winner, setWinner] = useState<string|null>(null);
 
   useEffect(() => {
-    const newGame = new TicTacToe();
+    const newGame = new TicTacToeGame();
     setGame(newGame);
     setBoard(newGame.board);
     setTurn(newGame.currentPlayer);
