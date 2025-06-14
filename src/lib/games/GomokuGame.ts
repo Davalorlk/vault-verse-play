@@ -1,7 +1,5 @@
 
-import { Game } from 'boardgame.io';
-
-const Gomoku: any = Game({
+const Gomoku: any = {
   setup: (ctx: any, setupData: any) => ({
     board: Array(15).fill(null).map(() => Array(15).fill(null)),
     winner: null,
@@ -25,7 +23,7 @@ const Gomoku: any = Game({
       return { winner: ctx.currentPlayer };
     }
   },
-});
+};
 
 function CheckGomokuWinner(board: any, player: any, size: number) {
   const directions = [

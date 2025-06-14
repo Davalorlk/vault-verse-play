@@ -1,7 +1,5 @@
 
-import { Game } from 'boardgame.io';
-
-const TicTacToe: any = Game({
+const TicTacToe: any = {
   setup: () => ({
     cells: Array(9).fill(null),
     winner: null,
@@ -29,7 +27,7 @@ const TicTacToe: any = Game({
       return { draw: true };
     }
   },
-});
+};
 
 // Helper functions
 function IsVictory(cells: any[]) {

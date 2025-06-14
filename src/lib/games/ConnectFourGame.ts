@@ -1,7 +1,5 @@
 
-import { Game } from 'boardgame.io';
-
-const ConnectFour: any = Game({
+const ConnectFour: any = {
   setup: () => ({
     board: Array(6).fill(null).map(() => Array(7).fill(null)),
     winner: null,
@@ -29,7 +27,7 @@ const ConnectFour: any = Game({
       return { winner: ctx.currentPlayer };
     }
   },
-});
+};
 
 function CheckWinner(board: any, player: any) {
   const directions = [

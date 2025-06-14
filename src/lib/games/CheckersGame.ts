@@ -1,7 +1,5 @@
 
-import { Game } from 'boardgame.io';
-
-const Checkers: any = Game({
+const Checkers: any = {
   setup: () => ({
     board: [
       [null, 'b', null, 'b', null, 'b', null, 'b'],
@@ -40,7 +38,7 @@ const Checkers: any = Game({
     // Simplified end condition
     return null;
   },
-});
+};
 
 function IsValidCheckersMove(board: any, from: any, to: any, player: any) {
   const piece = board[from.row][from.col];

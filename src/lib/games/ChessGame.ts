@@ -1,7 +1,5 @@
 
-import { Game } from 'boardgame.io';
-
-const Chess: any = Game({
+const Chess: any = {
   setup: () => ({
     board: [
       ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
@@ -36,7 +34,7 @@ const Chess: any = Game({
       return { winner: ctx.currentPlayer === '0' ? '1' : '0' };
     }
   },
-});
+};
 
 function IsValidMove(board: any, from: any, to: any, player: any) {
   // Simplified move validation
