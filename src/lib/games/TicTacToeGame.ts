@@ -1,8 +1,6 @@
-
-const TicTacToe: any = {
+const TicTacToe = {
   setup: () => ({
     cells: Array(9).fill(null),
-    winner: null,
   }),
 
   turn: {
@@ -15,7 +13,7 @@ const TicTacToe: any = {
       if (G.cells[id] !== null) {
         return;
       }
-      G.cells[id] = ctx.currentPlayer;
+      G.cells[id] = ctx.currentPlayer === '0' ? 'X' : 'O';
     },
   },
 
@@ -54,6 +52,7 @@ function IsDraw(cells: any[]) {
   return cells.filter(c => c === null).length === 0;
 }
 
+// Keep the existing TicTacToeGame class for backward compatibility
 export class TicTacToeGame {
   board: string[][];
   currentPlayer: string;
