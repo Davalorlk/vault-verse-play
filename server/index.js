@@ -83,6 +83,7 @@ app.get('/api/leaderboard', async (req, res) => {
 
 // In-memory presence tracking
 const onlineUsers = new Map(); // socket.id -> userInfo
+const gameRooms = new Map(); // roomName-gameId -> { players: [], gameState: {}, currentPlayer: 0 }
 
 // Example Socket.IO events
 io.on('connection', (socket) => {
@@ -94,17 +95,71 @@ io.on('connection', (socket) => {
     io.emit('presence-update', Array.from(onlineUsers.values()));
   });
 
-  // Join a game room
+  // Join a game room with proper turn management
   socket.on('join-game-room', ({ roomName, gameId }) => {
     const room = `${roomName}-${gameId}`;
+    const roomKey = `${roomName}-${gameId}`;
+    
     socket.join(room);
-    // Optionally: emit current state to this user
+    
+    // Initialize game room if it doesn't exist
+    if (!gameRooms.has(roomKey)) {
+      gameRooms.set(roomKey, {
+        players: [],
+        gameState: {
+          board: [['', '', ''], ['', '', ''], ['', '', '']],
+          currentPlayer: 'X',
+          winner: null
+        },
+        currentPlayerIndex: 0
+      });
+    }
+    
+    const gameRoom = gameRooms.get(roomKey);
+    
+    // Add player to room if not already present
+    const existingPlayer = gameRoom.players.find(p => p.socketId === socket.id);
+    if (!existingPlayer && gameRoom.players.length < 2) {
+      const playerSymbol = gameRoom.players.length === 0 ? 'X' : 'O';
+      gameRoom.players.push({
+        socketId: socket.id,
+        symbol: playerSymbol
+      });
+      
+      // Notify player of their symbol
+      socket.emit('game-initialized', {
+        symbol: playerSymbol,
+        gameStarted: gameRoom.players.length === 2
+      });
+      
+      // Notify all players in room about player count
+      io.to(room).emit('player-joined', {
+        playersCount: gameRoom.players.length
+      });
+      
+      // Send current game state to the new player
+      socket.emit('game-state-update', gameRoom.gameState);
+    }
   });
 
-  // Game state update event
+  // Game state update event with turn validation
   socket.on('game-state-update', ({ roomName, gameId, state }) => {
     const room = `${roomName}-${gameId}`;
-    socket.to(room).emit('game-state-update', state);
+    const roomKey = `${roomName}-${gameId}`;
+    
+    if (gameRooms.has(roomKey)) {
+      const gameRoom = gameRooms.get(roomKey);
+      const player = gameRoom.players.find(p => p.socketId === socket.id);
+      
+      // Validate that it's the player's turn
+      if (player && state.currentPlayer !== player.symbol) {
+        // Update game state
+        gameRoom.gameState = state;
+        
+        // Broadcast to other players
+        socket.to(room).emit('game-state-update', state);
+      }
+    }
   });
 
   socket.on('chat-message', (msg) => {
@@ -130,6 +185,26 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     onlineUsers.delete(socket.id);
+    
+    // Remove player from game rooms
+    for (const [roomKey, gameRoom] of gameRooms.entries()) {
+      const playerIndex = gameRoom.players.findIndex(p => p.socketId === socket.id);
+      if (playerIndex !== -1) {
+        gameRoom.players.splice(playerIndex, 1);
+        
+        // If room becomes empty, clean it up
+        if (gameRoom.players.length === 0) {
+          gameRooms.delete(roomKey);
+        } else {
+          // Notify remaining players
+          const room = roomKey.replace('-', '-');
+          io.to(room).emit('player-left', {
+            playersCount: gameRoom.players.length
+          });
+        }
+      }
+    }
+    
     io.emit('presence-update', Array.from(onlineUsers.values()));
     console.log('User disconnected:', socket.id);
   });
