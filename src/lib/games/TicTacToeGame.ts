@@ -1,8 +1,66 @@
 
+import { Game } from 'boardgame.io/core';
+
+const TicTacToe = Game({
+  setup: () => ({
+    cells: Array(9).fill(null),
+    winner: null,
+  }),
+
+  turn: {
+    minMoves: 1,
+    maxMoves: 1,
+  },
+
+  moves: {
+    clickCell: (G, ctx, id) => {
+      if (G.cells[id] !== null) {
+        return;
+      }
+      G.cells[id] = ctx.currentPlayer;
+    },
+  },
+
+  endIf: (G, ctx) => {
+    if (IsVictory(G.cells)) {
+      return { winner: ctx.currentPlayer };
+    }
+    if (IsDraw(G.cells)) {
+      return { draw: true };
+    }
+  },
+});
+
+// Helper functions
+function IsVictory(cells) {
+  const positions = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6],
+  ];
+
+  const isRowComplete = (row) => {
+    const symbols = row.map(i => cells[i]);
+    return symbols.every(i => i !== null && i === symbols[0]);
+  };
+
+  return positions.map(isRowComplete).some(i => i === true);
+}
+
+function IsDraw(cells) {
+  return cells.filter(c => c === null).length === 0;
+}
+
 export class TicTacToeGame {
   board: string[][];
   currentPlayer: string;
   winner: string | null;
+  game: any;
 
   constructor() {
     this.board = [
@@ -12,6 +70,7 @@ export class TicTacToeGame {
     ];
     this.currentPlayer = 'X';
     this.winner = null;
+    this.game = TicTacToe;
   }
 
   isValidMove(row: number, col: number): boolean {
@@ -79,3 +138,5 @@ export class TicTacToeGame {
     this.winner = state.winner;
   }
 }
+
+export { TicTacToe };

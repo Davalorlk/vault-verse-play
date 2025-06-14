@@ -1,8 +1,64 @@
 
+import { Game } from 'boardgame.io/core';
+
+const Chess = Game({
+  setup: () => ({
+    board: [
+      ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+      ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+      [null, null, null, null, null, null, null, null],
+      [null, null, null, null, null, null, null, null],
+      [null, null, null, null, null, null, null, null],
+      [null, null, null, null, null, null, null, null],
+      ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+      ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+    ],
+    winner: null,
+  }),
+
+  turn: {
+    minMoves: 1,
+    maxMoves: 1,
+  },
+
+  moves: {
+    move: (G, ctx, from, to) => {
+      const piece = G.board[from.row][from.col];
+      if (piece && IsValidMove(G.board, from, to, ctx.currentPlayer)) {
+        G.board[to.row][to.col] = piece;
+        G.board[from.row][from.col] = null;
+      }
+    },
+  },
+
+  endIf: (G, ctx) => {
+    if (IsCheckmate(G.board, ctx.currentPlayer)) {
+      return { winner: ctx.currentPlayer === '0' ? '1' : '0' };
+    }
+  },
+});
+
+function IsValidMove(board, from, to, player) {
+  // Simplified move validation
+  const piece = board[from.row][from.col];
+  if (!piece) return false;
+  
+  const isWhite = piece === piece.toUpperCase();
+  const currentPlayerIsWhite = player === '0';
+  
+  return isWhite === currentPlayerIsWhite;
+}
+
+function IsCheckmate(board, player) {
+  // Simplified checkmate detection
+  return false;
+}
+
 export class ChessGame {
   board: string[][];
   turn: string;
   gameOver: boolean;
+  game: any;
 
   constructor() {
     this.board = [
@@ -17,6 +73,7 @@ export class ChessGame {
     ];
     this.turn = 'white';
     this.gameOver = false;
+    this.game = Chess;
   }
 
   isGameOver(): boolean {
@@ -24,16 +81,14 @@ export class ChessGame {
   }
 
   isCheckmate(): boolean {
-    return this.gameOver; // Simplified for now
+    return this.gameOver;
   }
 
   moves(options?: any): any[] {
-    // Simplified move generation - return empty for now
     return [];
   }
 
   move(moveObj: { from: string; to: string }): any {
-    // Simplified move implementation
     const fromCoords = this.algebraicToCoords(moveObj.from);
     const toCoords = this.algebraicToCoords(moveObj.to);
     
@@ -66,12 +121,12 @@ export class ChessGame {
   }
 
   fen(): string {
-    // Simplified FEN notation
     return 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
   }
 
   load(fen: string): void {
-    // Simplified FEN loading
     console.log('Loading FEN:', fen);
   }
 }
+
+export { Chess };

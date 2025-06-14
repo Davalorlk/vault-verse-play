@@ -1,8 +1,62 @@
 
+import { Game } from 'boardgame.io/core';
+
+const Checkers = Game({
+  setup: () => ({
+    board: [
+      [null, 'b', null, 'b', null, 'b', null, 'b'],
+      ['b', null, 'b', null, 'b', null, 'b', null],
+      [null, 'b', null, 'b', null, 'b', null, 'b'],
+      [null, null, null, null, null, null, null, null],
+      [null, null, null, null, null, null, null, null],
+      ['w', null, 'w', null, 'w', null, 'w', null],
+      [null, 'w', null, 'w', null, 'w', null, 'w'],
+      ['w', null, 'w', null, 'w', null, 'w', null]
+    ],
+    winner: null,
+  }),
+
+  turn: {
+    minMoves: 1,
+    maxMoves: 1,
+  },
+
+  moves: {
+    move: (G, ctx, from, to) => {
+      const piece = G.board[from.row][from.col];
+      if (piece && IsValidCheckersMove(G.board, from, to, ctx.currentPlayer)) {
+        G.board[to.row][to.col] = piece;
+        G.board[from.row][from.col] = null;
+        
+        // Promote to king if reaching opposite end
+        if ((piece === 'w' && to.row === 0) || (piece === 'b' && to.row === 7)) {
+          G.board[to.row][to.col] = piece.toUpperCase();
+        }
+      }
+    },
+  },
+
+  endIf: (G, ctx) => {
+    // Simplified end condition
+    return null;
+  },
+});
+
+function IsValidCheckersMove(board, from, to, player) {
+  const piece = board[from.row][from.col];
+  if (!piece) return false;
+  
+  const isPlayerPiece = (player === '0' && (piece === 'w' || piece === 'W')) || 
+                       (player === '1' && (piece === 'b' || piece === 'B'));
+  
+  return isPlayerPiece && board[to.row][to.col] === null;
+}
+
 export class CheckersGame {
   board: string[][];
   currentPlayer: string;
   winner: string | null;
+  game: any;
 
   constructor() {
     this.board = [
@@ -17,10 +71,10 @@ export class CheckersGame {
     ];
     this.currentPlayer = 'w';
     this.winner = null;
+    this.game = Checkers;
   }
 
   getValidMoves(row: number, col: number): any[] {
-    // Simplified move validation
     const moves = [];
     const piece = this.board[row][col];
     
@@ -90,3 +144,5 @@ export class CheckersGame {
     this.winner = state.winner;
   }
 }
+
+export { Checkers };
