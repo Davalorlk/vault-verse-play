@@ -1,114 +1,78 @@
-// Tic Tac Toe game logic for two players
+
 import { useEffect, useState } from 'react';
 import { socket } from '@/lib/socket';
-
-const initialBoard = [
-  ['', '', ''],
-  ['', '', ''],
-  ['', '', '']
-];
-
-function getNextTurn(turn: string) {
-  return turn === 'X' ? 'O' : 'X';
-}
-
-function checkWinner(board: string[][]) {
-  for (let i = 0; i < 3; i++) {
-    if (board[i][0] && board[i][0] === board[i][1] && board[i][1] === board[i][2]) return board[i][0];
-    if (board[0][i] && board[0][i] === board[1][i] && board[1][i] === board[2][i]) return board[0][i];
-  }
-  if (board[0][0] && board[0][0] === board[1][1] && board[1][1] === board[2][2]) return board[0][0];
-  if (board[0][2] && board[0][2] === board[1][1] && board[1][1] === board[2][0]) return board[0][2];
-  return null;
-}
-
-// --- Smarter Tic Tac Toe AI: minimax ---
-function minimaxTicTacToe(board: string[][], turn: string): {score: number, move: [number, number]|null} {
-  const winner = checkWinner(board);
-  if (winner === 'X') return { score: 1, move: null };
-  if (winner === 'O') return { score: -1, move: null };
-  if (board.flat().every(cell => cell)) return { score: 0, move: null };
-  let bestScore = turn === 'X' ? -Infinity : Infinity;
-  let bestMove: [number, number]|null = null;
-  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) {
-    if (!board[r][c]) {
-      board[r][c] = turn;
-      const result = minimaxTicTacToe(board, turn === 'X' ? 'O' : 'X');
-      board[r][c] = '';
-      if (turn === 'X' ? result.score > bestScore : result.score < bestScore) {
-        bestScore = result.score;
-        bestMove = [r, c];
-      }
-    }
-  }
-  return { score: bestScore, move: bestMove };
-}
+import { TicTacToe } from 'papergames.io';
 
 export function TicTacToe({ roomName, user, isMyTurn, playMode }: { roomName: string, user: any, isMyTurn: boolean, playMode: 'player' | 'computer' }) {
-  const [board, setBoard] = useState(initialBoard);
+  const [game, setGame] = useState<any>(null);
+  const [board, setBoard] = useState<string[][]>([]);
   const [turn, setTurn] = useState('X');
   const [winner, setWinner] = useState<string|null>(null);
 
   useEffect(() => {
-    if (playMode === 'player') {
+    const newGame = new TicTacToe();
+    setGame(newGame);
+    setBoard(newGame.board);
+    setTurn(newGame.currentPlayer);
+  }, []);
+
+  useEffect(() => {
+    if (playMode === 'player' && game) {
       socket.emit('join-game-room', { roomName, gameId: 'tictactoe' });
-      const handleGameState = (state: { board: string[][], turn: string }) => {
-        setBoard(state.board);
-        setTurn(state.turn);
+      
+      const handleGameState = (state: any) => {
+        if (state.board) {
+          game.loadState(state);
+          setBoard(game.board);
+          setTurn(game.currentPlayer);
+          setWinner(game.winner);
+        }
       };
+      
       socket.on('game-state-update', handleGameState);
       return () => {
         socket.off('game-state-update', handleGameState);
       };
-    } else {
-      setBoard(initialBoard);
-      setTurn('X');
     }
-  }, [roomName, playMode]);
+  }, [roomName, playMode, game]);
 
   useEffect(() => {
-    if (playMode === 'player') {
+    if (playMode === 'player' && game) {
       socket.emit('game-state-update', {
         roomName,
         gameId: 'tictactoe',
-        state: { board, turn }
+        state: { board: game.board, currentPlayer: game.currentPlayer, winner: game.winner }
       });
     }
-  }, [board, turn, playMode, roomName]);
+  }, [board, turn, playMode, roomName, game]);
 
   useEffect(() => {
-    const win = checkWinner(board);
-    if (win) setWinner(win);
-    if (playMode === 'computer' && turn === 'O' && !win) {
+    if (game && playMode === 'computer' && turn === 'O' && !winner) {
       setTimeout(() => {
-        const { move } = minimaxTicTacToe(board, 'O');
-        if (move) {
-          const newBoard = board.map(arr => [...arr]);
-          newBoard[move[0]][move[1]] = 'O';
-          setBoard(newBoard);
-          setTurn('X');
+        const availableMoves = game.getAvailableMoves();
+        if (availableMoves.length > 0) {
+          const randomMove = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+          game.makeMove(randomMove.row, randomMove.col);
+          setBoard([...game.board]);
+          setTurn(game.currentPlayer);
+          setWinner(game.winner);
         }
       }, 500);
     }
-  }, [board, turn, playMode]);
+  }, [game, turn, playMode, winner]);
 
   function handleCellClick(row: number, col: number) {
-    if (winner) return;
-    if (playMode === 'player') {
-      if (!isMyTurn || board[row][col]) return;
-      const newBoard = board.map(arr => [...arr]);
-      newBoard[row][col] = turn;
-      setBoard(newBoard);
-      setTurn(getNextTurn(turn));
-      // Socket emit handled by useEffect
-    } else {
-      if (turn !== 'X' || board[row][col]) return;
-      const newBoard = board.map(arr => [...arr]);
-      newBoard[row][col] = 'X';
-      setBoard(newBoard);
-      setTurn('O');
+    if (!game || winner || (playMode === 'player' && !isMyTurn)) return;
+    
+    if (game.isValidMove(row, col)) {
+      game.makeMove(row, col);
+      setBoard([...game.board]);
+      setTurn(game.currentPlayer);
+      setWinner(game.winner);
     }
   }
+
+  if (!game) return <div>Loading game...</div>;
 
   return (
     <div className="flex flex-col items-center justify-center w-full h-full">
