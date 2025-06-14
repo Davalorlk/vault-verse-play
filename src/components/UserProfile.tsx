@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Edit2, Save, X, Star, Trophy, Coins, Target } from 'lucide-react';
+import { Edit2, Save, X, Star, Trophy, Coins, Target, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface UserProfileProps {
@@ -45,6 +45,12 @@ export const UserProfile = ({ user, onUpdateUser }: UserProfileProps) => {
     setIsEditing(false);
   };
 
+  const handleSupportClick = () => {
+    toast.info('Support request submitted! We\'ll get back to you soon.');
+    // Here you could implement actual support functionality like opening a modal,
+    // redirecting to a support page, or sending an email
+  };
+
   const getRankColor = (rank: string) => {
     switch (rank) {
       case 'Legend': return 'bg-purple-500/20 text-purple-400 border-purple-500/50';
@@ -59,16 +65,26 @@ export const UserProfile = ({ user, onUpdateUser }: UserProfileProps) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Your Vault Profile</h2>
-        {!isEditing && (
+        <div className="flex gap-2">
           <Button
-            onClick={() => setIsEditing(true)}
+            onClick={handleSupportClick}
             variant="outline"
             className="border-slate-600 text-slate-300 hover:bg-slate-800"
           >
-            <Edit2 className="h-4 w-4 mr-2" />
-            Edit Profile
+            <HelpCircle className="h-4 w-4 mr-2" />
+            Support
           </Button>
-        )}
+          {!isEditing && (
+            <Button
+              onClick={() => setIsEditing(true)}
+              variant="outline"
+              className="border-slate-600 text-slate-300 hover:bg-slate-800"
+            >
+              <Edit2 className="h-4 w-4 mr-2" />
+              Edit Profile
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Profile Card */}
