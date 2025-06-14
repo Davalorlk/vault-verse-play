@@ -1,10 +1,9 @@
-
 import { useEffect, useState } from 'react';
 import { socket } from '@/lib/socket';
-import { Checkers as CheckersGame } from 'papergames.io';
+import { CheckersGame } from '@/lib/games/CheckersGame';
 
 export function Checkers({ roomName, user, isMyTurn, playMode }: { roomName: string, user: any, isMyTurn: boolean, playMode: 'player' | 'computer' }) {
-  const [game, setGame] = useState<any>(null);
+  const [game, setGame] = useState<CheckersGame | null>(null);
   const [board, setBoard] = useState<string[][]>([]);
   const [turn, setTurn] = useState('w');
   const [selected, setSelected] = useState<{row: number, col: number} | null>(null);
@@ -25,7 +24,7 @@ export function Checkers({ roomName, user, isMyTurn, playMode }: { roomName: str
       const handleGameState = (state: any) => {
         if (state.board) {
           game.loadState(state);
-          setBoard(game.board);
+          setBoard([...game.board]);
           setTurn(game.currentPlayer);
           setWinner(game.winner);
         }

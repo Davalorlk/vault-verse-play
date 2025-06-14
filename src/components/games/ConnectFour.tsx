@@ -1,10 +1,9 @@
-
 import { useEffect, useState } from 'react';
 import { socket } from '@/lib/socket';
-import { ConnectFour as ConnectFourGame } from 'papergames.io';
+import { ConnectFourGame } from '@/lib/games/ConnectFourGame';
 
 export function ConnectFour({ roomName, user, isMyTurn, playMode }: { roomName: string, user: any, isMyTurn: boolean, playMode: 'player' | 'computer' }) {
-  const [game, setGame] = useState<any>(null);
+  const [game, setGame] = useState<ConnectFourGame | null>(null);
   const [board, setBoard] = useState<string[][]>([]);
   const [turn, setTurn] = useState('R');
   const [winner, setWinner] = useState<string|null>(null);
@@ -23,7 +22,7 @@ export function ConnectFour({ roomName, user, isMyTurn, playMode }: { roomName: 
       const handleGameState = (state: any) => {
         if (state.board) {
           game.loadState(state);
-          setBoard(game.board);
+          setBoard([...game.board]);
           setTurn(game.currentPlayer);
           setWinner(game.winner);
         }

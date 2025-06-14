@@ -1,7 +1,6 @@
-
 import { useEffect, useState } from 'react';
 import { socket } from '@/lib/socket';
-import { Chess as ChessGame } from 'papergames.io';
+import { ChessGame } from '@/lib/games/ChessGame';
 
 const pieceSymbols: Record<string, string> = {
   K: '♔', Q: '♕', R: '♖', B: '♗', N: '♘', P: '♙',
@@ -9,7 +8,7 @@ const pieceSymbols: Record<string, string> = {
 };
 
 export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: string, user: any, isMyTurn: boolean, playMode: 'player' | 'computer' }) {
-  const [chess, setChess] = useState<any>(null);
+  const [chess, setChess] = useState<ChessGame | null>(null);
   const [board, setBoard] = useState<string[][]>([]);
   const [selected, setSelected] = useState<{row: number, col: number} | null>(null);
   const [possibleMoves, setPossibleMoves] = useState<{row:number,col:number}[]>([]);
@@ -30,7 +29,7 @@ export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: s
       const handleGameState = (state: any) => {
         if (state.fen) {
           chess.load(state.fen);
-          setBoard(chess.board);
+          setBoard([...chess.board]);
           setTurn(chess.turn);
           setWinner(chess.isGameOver() ? (chess.isCheckmate() ? (chess.turn === 'white' ? 'Black' : 'White') : 'Draw') : null);
         }
@@ -85,7 +84,7 @@ export function ChessBoard({ roomName, user, isMyTurn, playMode }: { roomName: s
     try {
       const move = chess.move({ from, to });
       if (move) {
-        setBoard(chess.board);
+        setBoard([...chess.board]);
         setTurn(chess.turn);
         setSelected(null);
         setPossibleMoves([]);
