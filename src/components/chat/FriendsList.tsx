@@ -59,9 +59,9 @@ export const FriendsList = ({ currentUser, onSelectFriend }: FriendsListProps) =
       } else {
         toast.error('Failed to search users.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error searching users:', error);
-      toast.error('Error searching users.');
+      toast.error(`Error searching users: ${error.message || error}`);
     }
   };
 
