@@ -58,6 +58,7 @@ app.get('/api/dbtest', dbTest);
 
 // Test endpoint to verify deployment
 app.get('/api/test-endpoint', (req, res) => {
+  console.log('[/api/test-endpoint] Test endpoint hit!');
   res.json({ message: 'Test endpoint reached successfully!' });
 });
 
@@ -261,6 +262,7 @@ app.get('/api/friends/:uid', async (req, res) => {
 
 // Search users by username or display name
 app.get('/api/user/search', async (req, res) => {
+  console.log('[/api/user/search] Search request received.');
   const { query } = req.query;
   if (!query) {
     return res.status(400).json({ error: 'Search query is required.' });
