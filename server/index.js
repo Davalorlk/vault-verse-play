@@ -56,6 +56,11 @@ dbTest = async (req, res) => {
 };
 app.get('/api/dbtest', dbTest);
 
+// Test endpoint to verify deployment
+app.get('/api/test-endpoint', (req, res) => {
+  res.json({ message: 'Test endpoint reached successfully!' });
+});
+
 // Register a new user
 app.post('/api/register', async (req, res) => {
   // Log the incoming request body for debugging
