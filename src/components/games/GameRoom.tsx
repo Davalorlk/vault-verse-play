@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { socket } from '@/lib/socket';
-import { ArrowLeft, Gamepad2, Users } from 'lucide-react';
+import { ArrowLeft, Gamepad2, Users, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Battleship } from './Battleship';
 import { BrickBreaker } from './BrickBreaker';
@@ -16,6 +16,10 @@ import { NineHoles } from './NineHoles';
 import { PlayerVsPlayerCard } from './PlayerVsPlayerCard';
 import { Reversi } from './Reversi';
 import { TicTacToe } from './TicTacToe';
+import { toast } from 'sonner';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://mind-vault-kcfw.onrender.com';
 
 interface GameRoomProps {
   gameId: string;
@@ -260,144 +264,127 @@ export const GameRoom = ({ gameId, gameName, user, roomName, playMode, onLeave }
     onLeave();
   };
 
-  // Use uid as the primary unique identifier for player matching
-  const currentPlayer = roomPlayers.find(p => 
-    (p.uid && user.uid && p.uid === user.uid) ||
-    (p.username && user.username && p.username === user.username) ||
-    (p.displayName && user.displayName && p.displayName === user.displayName)
-  );
-  
-  const opponent = roomPlayers.find(p => 
-    (p.uid && user.uid && p.uid !== user.uid) ||
-    (p.username && user.username && p.username !== user.username) ||
-    (p.displayName && user.displayName && p.displayName !== user.displayName)
-  );
+  const sendFriendRequest = async (receiverUid: string) => {
+    try {
+      if (receiverUid === user.uid) {
+        toast.error('You cannot send a friend request to yourself.');
+        return;
+      }
 
-  // Fallback: if we have multiple players but can't identify opponent, use the other player
-  const fallbackOpponent = roomPlayers.length > 1 && !opponent ? 
-    roomPlayers.find(p => 
-      (p.uid && user.uid && p.uid !== user.uid) ||
-      (p.username && user.username && p.username !== user.username) ||
-      (p.displayName && user.displayName && p.displayName !== user.displayName)
-    ) : null;
+      const response = await fetch(`${API_BASE_URL}/api/friends/request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ senderId: user.uid, receiverId: receiverUid }),
+      });
+      if (response.ok) {
+        toast.success('Friend request sent!');
+        socket.emit('friend-request-sent', { 
+          senderId: user.uid, 
+          receiverId: receiverUid, 
+          senderDisplayName: user.displayName, 
+          senderAvatar: user.avatar 
+        });
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to send friend request.');
+      }
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      toast.error('Error sending friend request.');
+    }
+  };
 
-  const finalOpponent = opponent || fallbackOpponent;
-
-  // Debug logging
-  console.log('GameRoom Debug:', {
-    roomPlayers,
-    user,
-    currentPlayer,
-    opponent,
-    fallbackOpponent,
-    finalOpponent,
-    playersCount
-  });
+  const renderPlayersList = () => {
+    return (
+      <div className="flex flex-col gap-2 mb-4">
+        {roomPlayers.map((player) => (
+          <div key={player.uid} className="flex items-center justify-between p-2 bg-secondary rounded-lg">
+            <div className="flex items-center gap-2">
+              <Avatar>
+                <AvatarImage src={player.avatar} />
+                <AvatarFallback>{player.displayName?.[0] || player.username?.[0]}</AvatarFallback>
+              </Avatar>
+              <span>{player.displayName || player.username}</span>
+            </div>
+            {player.uid !== user.uid && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => sendFriendRequest(player.uid)}
+              >
+                <UserPlus className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col overflow-y-auto relative">
-      {/* Header */}
-      <div className="sticky top-0 left-0 right-0 z-10 p-3 sm:p-4 bg-black/20 backdrop-blur-sm border-b border-white/10">
-        <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLeave}
-              className="text-white hover:bg-white/10 p-2"
-            >
-              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <Gamepad2 className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-400" />
-              <div>
-                <h1 className="text-lg sm:text-xl font-bold text-white">{gameName}</h1>
-                {playMode === 'player' && (
-                  <div className="flex items-center gap-1 text-xs sm:text-sm text-slate-300">
-                    <Users className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span>Room: {roomName}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Badge variant="outline" className="border-yellow-500/50 text-yellow-400 text-xs sm:text-sm">
-              {playMode === 'computer' ? 'vs Computer' : `${playersCount}/2 Players`}
-            </Badge>
-          </div>
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between mb-4">
+        <Button variant="ghost" onClick={handleLeave} className="flex items-center gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Leave Game
+        </Button>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Users className="h-4 w-4" />
+            {playersCount} / 2
+          </Badge>
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Gamepad2 className="h-4 w-4" />
+            {gameName}
+          </Badge>
         </div>
       </div>
 
-      {/* Player vs Player Card */}
+      {playMode === 'player' && renderPlayersList()}
+
+      <div className="flex-1 overflow-hidden">
+        {renderGame()}
+      </div>
+
+      {/* Chat Box (always visible below the game) */}
       {playMode === 'player' && (
-        <div className="flex-shrink-0 pt-4">
-          <PlayerVsPlayerCard
-            player={{ 
-              username: user.displayName || user.username, 
-              avatar: user.avatar || '👤', 
-              isYou: true 
-            }}
-            opponent={finalOpponent ? { 
-              username: finalOpponent.displayName || finalOpponent.username, 
-              avatar: finalOpponent.avatar || '👤' 
-            } : (playersCount > 1 ? {
-              username: 'Opponent',
-              avatar: '👤'
-            } : undefined)}
-            yourTurn={isMyTurn}
-          />
+        <div className="w-full max-w-lg mt-4 bg-slate-800/95 backdrop-blur-sm border border-white/10 rounded-xl flex flex-col">
+          <div className="p-3 border-b border-white/10">
+            <h3 className="text-white font-semibold text-sm">Room Chat</h3>
+          </div>
+          <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-60">
+            {messages.map((msg) => (
+              <div key={msg.id} className="text-sm">
+                <div className={`font-medium ${msg.isSystem ? 'text-blue-400 italic' : 'text-yellow-400'}`}>
+                  {msg.user}
+                </div>
+                <div className="text-slate-300">{msg.text}</div>
+                <div className="text-xs text-slate-500">
+                  {new Date(msg.timestamp).toLocaleTimeString()}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="p-3 border-t border-white/10">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                placeholder="Type a message..."
+                className="flex-1 px-3 py-2 bg-slate-700 text-white rounded text-sm border border-slate-600 focus:border-yellow-400 focus:outline-none"
+              />
+              <Button
+                onClick={sendMessage}
+                className="bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-semibold text-sm px-4 py-2"
+              >
+                Send
+              </Button>
+            </div>
+          </div>
         </div>
       )}
-
-      {/* Game Content */}
-      <div className="flex-1 flex flex-col items-center justify-start px-2 pb-4">
-        <div className="w-full max-w-3xl flex-1 flex flex-col items-center justify-center">
-          {renderGame()}
-        </div>
-
-        {/* No replay button or manual replay UI. Game will auto-reset after 5 seconds if both players are present. */}
-
-        {/* Chat Box (always visible below the game) */}
-        {playMode === 'player' && (
-          <div className="w-full max-w-lg mt-4 bg-slate-800/95 backdrop-blur-sm border border-white/10 rounded-xl flex flex-col">
-            <div className="p-3 border-b border-white/10">
-              <h3 className="text-white font-semibold text-sm">Room Chat</h3>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-60">
-              {messages.map((msg) => (
-                <div key={msg.id} className="text-sm">
-                  <div className={`font-medium ${msg.isSystem ? 'text-blue-400 italic' : 'text-yellow-400'}`}>
-                    {msg.user}
-                  </div>
-                  <div className="text-slate-300">{msg.text}</div>
-                  <div className="text-xs text-slate-500">
-                    {new Date(msg.timestamp).toLocaleTimeString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="p-3 border-t border-white/10">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                  placeholder="Type a message..."
-                  className="flex-1 px-3 py-2 bg-slate-700 text-white rounded text-sm border border-slate-600 focus:border-yellow-400 focus:outline-none"
-                />
-                <Button
-                  onClick={sendMessage}
-                  className="bg-yellow-500 hover:bg-yellow-600 text-slate-900 font-semibold text-sm px-4 py-2"
-                >
-                  Send
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 };

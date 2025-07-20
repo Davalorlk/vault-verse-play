@@ -27,6 +27,7 @@ export const FriendsList = ({ currentUser, onSelectFriend }: FriendsListProps) =
   const [searchTerm, setSearchTerm] = useState('');
   const [findUserSearchTerm, setFindUserSearchTerm] = useState('');
   const [foundUsers, setFoundUsers] = useState<any[]>([]);
+  const [searchPerformed, setSearchPerformed] = useState(false); // New state to track if a search has been performed
   const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('friends');
 
@@ -49,18 +50,27 @@ export const FriendsList = ({ currentUser, onSelectFriend }: FriendsListProps) =
   const searchUsers = async () => {
     if (!findUserSearchTerm.trim()) {
       setFoundUsers([]);
+      setSearchPerformed(false);
       return;
     }
+    setSearchPerformed(true);
     try {
       const response = await fetch(`${API_BASE_URL}/api/user/search?query=${findUserSearchTerm}`);
       if (response.ok) {
         const data = await response.json();
-        setFoundUsers(data.filter((user: any) => user.uid !== currentUser.uid)); // Exclude self
+        // Filter out self and already friends
+        const filteredData = data.filter((user: any) => 
+          user.uid !== currentUser.uid && 
+          !friends.some(f => f.friend_uid === user.uid)
+        );
+        setFoundUsers(filteredData);
       } else {
+        setFoundUsers([]); // Clear previous results on error
         toast.error('Failed to search users.');
       }
     } catch (error: any) {
       console.error('Error searching users:', error);
+      setFoundUsers([]); // Clear previous results on error
       toast.error(`Error searching users: ${error.message || error}`);
     }
   };
@@ -352,7 +362,11 @@ export const FriendsList = ({ currentUser, onSelectFriend }: FriendsListProps) =
                   })}
                 </div>
               ) : (
-                <p className="text-slate-400 text-center">Search for users to add them as friends.</p>
+                searchPerformed && findUserSearchTerm.trim() !== '' ? (
+                  <p className="text-slate-400 text-center">Player doesn't exist or is already your friend.</p>
+                ) : (
+                  <p className="text-slate-400 text-center">Search for users to add them as friends.</p>
+                )
               )}
             </CardContent>
           </Card>

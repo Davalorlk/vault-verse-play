@@ -23,6 +23,8 @@ import {
 interface UserProfileProps {
   user: any;
   onUpdateUser: (stats: any) => void;
+  isCurrentUser?: boolean; // New prop to determine if the profile belongs to the current user
+  onAddFriend?: (userId: string) => void; // New prop for adding friend functionality
 }
 
 const avatarOptions = ['👤', '🧙‍♂️', '🦸‍♀️', '🦸‍♂️', '👩‍💻', '👨‍💻', '🧠', '🔮', '⚡', '🌟'];
@@ -35,7 +37,7 @@ const formatDate = (date: any) => {
   return new Date(date).toLocaleDateString();
 };
 
-export const UserProfile = ({ user, onUpdateUser }: UserProfileProps) => {
+export const UserProfile = ({ user, onUpdateUser, isCurrentUser, onAddFriend }: UserProfileProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [displayName, setDisplayName] = useState(user.displayName);
   const [selectedAvatar, setSelectedAvatar] = useState(user.avatar);
@@ -193,6 +195,15 @@ export const UserProfile = ({ user, onUpdateUser }: UserProfileProps) => {
                 </Badge>
               </div>
             </div>
+            {/* Only show Add Friend button if not current user and onAddFriend prop is provided */}
+            {user.uid !== user.currentUserId && onAddFriend && (
+              <Button
+                onClick={() => onAddFriend(user.uid)}
+                className="mt-4 bg-blue-600 hover:bg-blue-700"
+              >
+                Add Friend
+              </Button>
+            )}
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -240,7 +251,7 @@ export const UserProfile = ({ user, onUpdateUser }: UserProfileProps) => {
       {isEditing ? renderEditingView() : renderDisplayView()}
 
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="bg-slate-800/50 border-slate-700">
           <CardContent className="p-6 text-center">
             <div className="p-3 bg-blue-500/20 rounded-full w-fit mx-auto mb-3">
@@ -282,7 +293,6 @@ export const UserProfile = ({ user, onUpdateUser }: UserProfileProps) => {
         </Card>
       </div>
 
-      
       <Card className="bg-slate-800/50 border-slate-700">
         <CardHeader>
           <CardTitle className="text-white">Level Progress</CardTitle>
@@ -301,7 +311,6 @@ export const UserProfile = ({ user, onUpdateUser }: UserProfileProps) => {
         </CardContent>
       </Card>
 
-      
       {user.achievements && user.achievements.length > 0 && (
         <Card className="bg-slate-800/50 border-slate-700">
           <CardHeader>
@@ -320,7 +329,6 @@ export const UserProfile = ({ user, onUpdateUser }: UserProfileProps) => {
         </Card>
       )}
 
-      {/* Danger Zone */}
       <Card className="bg-red-900/20 border-red-500/50">
         <CardHeader>
           <CardTitle className="text-red-400">Danger Zone</CardTitle>
@@ -365,7 +373,6 @@ export const UserProfile = ({ user, onUpdateUser }: UserProfileProps) => {
         </CardContent>
       </Card>
 
-      {/* Support Form Modal */}
       <SupportForm 
         isOpen={showSupportForm}
         onClose={() => setShowSupportForm(false)}

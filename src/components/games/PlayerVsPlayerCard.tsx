@@ -1,21 +1,24 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Users } from 'lucide-react';
+import { Button } from '@/components/ui/button'; // Import Button
+import { Users, UserPlus } from 'lucide-react'; // Import UserPlus
 
 interface PlayerInfo {
   username: string;
   avatar: string;
   isCurrent?: boolean;
   isYou?: boolean;
+  uid?: string; // Add uid to PlayerInfo
 }
 
 interface PlayerVsPlayerCardProps {
   player: PlayerInfo;
   opponent?: PlayerInfo;
   yourTurn?: boolean;
+  onAddFriend?: (userId: string) => void; // New prop for adding friend functionality
 }
 
-export function PlayerVsPlayerCard({ player, opponent, yourTurn }: PlayerVsPlayerCardProps) {
+export function PlayerVsPlayerCard({ player, opponent, yourTurn, onAddFriend }: PlayerVsPlayerCardProps) {
   return (
     <div className="w-full max-w-lg mx-auto flex items-center justify-between bg-slate-800/80 border border-slate-700 rounded-xl p-4 mb-4 shadow-lg">
       {/* Player */}
@@ -42,7 +45,17 @@ export function PlayerVsPlayerCard({ player, opponent, yourTurn }: PlayerVsPlaye
         </Avatar>
         <div>
           <div className="text-white font-semibold text-base">{opponent?.username || 'Waiting...'}</div>
-         
+          {opponent && opponent.uid && onAddFriend && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 border-slate-600 text-slate-300 hover:bg-slate-700"
+              onClick={() => onAddFriend(opponent.uid!)}
+            >
+              <UserPlus className="h-4 w-4 mr-1" />
+              Add Friend
+            </Button>
+          )}
         </div>
       </div>
     </div>

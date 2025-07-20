@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { socket } from '@/lib/socket';
 import { Badge as BadgeIcon, Crown, Star, Trophy } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { UserProfile } from './UserProfile'; // Import UserProfile
+import { toast } from 'sonner';
 
 interface LeaderboardProps {
   currentUser: any;
@@ -15,6 +17,7 @@ export const Leaderboard = ({ currentUser }: LeaderboardProps) => {
   const [onlineCount, setOnlineCount] = useState(0);
   const [totalPlayers, setTotalPlayers] = useState(0);
   const [userRank, setUserRank] = useState<number|null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<any>(null); // New state for selected player
 
   // Get rank-based icon and theme
   const getRankTheme = (position: number) => {
@@ -105,6 +108,26 @@ export const Leaderboard = ({ currentUser }: LeaderboardProps) => {
     };
   }, [currentUser]);
 
+  const handleAddFriend = (targetUserId: string) => {
+    if (currentUser.uid === targetUserId) {
+      toast.info("You cannot send a friend request to yourself.");
+      return;
+    }
+    socket.emit('send-friend-request', { senderId: currentUser.uid, receiverId: targetUserId, senderDisplayName: currentUser.displayName, senderAvatar: currentUser.avatar });
+    toast.success("Friend request sent!");
+  };
+
+  if (selectedPlayer) {
+    return (
+      <div className="space-y-6">
+        <button onClick={() => setSelectedPlayer(null)} className="text-blue-400 hover:underline mb-4">
+          &larr; Back to Leaderboard
+        </button>
+        <UserProfile user={selectedPlayer} onUpdateUser={() => {}} isCurrentUser={false} onAddFriend={handleAddFriend} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -132,11 +155,12 @@ export const Leaderboard = ({ currentUser }: LeaderboardProps) => {
               return (
                 <div
                   key={player.uid || player.id || index}
-                  className={`flex items-center justify-between p-4 rounded-lg border transition-colors ${
+                  className={`flex items-center justify-between p-4 rounded-lg border transition-colors cursor-pointer ${
                     isCurrentUser
                       ? 'bg-yellow-400/20 border-yellow-400/50'
                       : `${theme.bgGradient} ${theme.borderColor} hover:bg-slate-700/50`
                   }`}
+                  onClick={() => setSelectedPlayer(player)}
                 >
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center justify-center w-8 h-8">

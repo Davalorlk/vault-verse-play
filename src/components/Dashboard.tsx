@@ -335,7 +335,7 @@ export const Dashboard = ({ user, onLogout, initialTab = 'puzzles', onTabChange 
             </TabsContent>
 
             <TabsContent value="profile" className="mt-0">
-              <UserProfile user={userStats} onUpdateUser={updateUserStats} />
+              <UserProfile user={userStats} onUpdateUser={updateUserStats} isCurrentUser={true} />
             </TabsContent>
           </Tabs>
         </div>
