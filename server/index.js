@@ -352,6 +352,7 @@ app.get('/api/leaderboard', async (req, res) => {
 // In-memory presence tracking
 const onlineUsers = new Map(); // socket.id -> userInfo
 const gameRooms = new Map(); // roomName-gameId -> { players: [], gameState: {}, gameType: string, messages: [] }
+const pendingMessages = new Map(); // receiverId -> [messages]
 
 // Helper function to get game-specific initial state
 function getInitialGameState(gameId) {
@@ -490,6 +491,21 @@ io.on('connection', (socket) => {
     onlineUsers.set(socket.id, userInfo);
     console.log('Online users:', Array.from(onlineUsers.entries()));
     io.emit('presence-update', Array.from(onlineUsers.values()));
+
+    // Check for pending messages for this user
+    if (userInfo.uid && pendingMessages.has(userInfo.uid)) {
+      const messages = pendingMessages.get(userInfo.uid);
+      messages.forEach(msg => {
+        io.to(socket.id).emit('receive-dm', msg);
+        io.to(socket.id).emit('new-notification', {
+          type: 'dm',
+          content: `New message from ${msg.sender_display_name || 'a friend'}: ${msg.content}`,
+          senderId: msg.sender_id,
+          timestamp: msg.timestamp
+        });
+      });
+      pendingMessages.delete(userInfo.uid);
+    }
   });
 
   // Handle rejoining global chat
@@ -867,9 +883,20 @@ io.on('connection', (socket) => {
       if (receiverSockets.length > 0) {
         receiverSockets.forEach(sockId => {
           io.to(sockId).emit('receive-dm', newMessage);
+          io.to(sockId).emit('new-notification', {
+            type: 'dm',
+            content: `New message from ${senderDisplayName || 'a friend'}: ${content}`,
+            senderId: senderId,
+            timestamp: newMessage.timestamp
+          });
         });
       } else {
         console.log('Receiver is not online:', receiverId);
+        // Store message for later delivery
+        if (!pendingMessages.has(receiverId)) {
+          pendingMessages.set(receiverId, []);
+        }
+        pendingMessages.get(receiverId).push(newMessage);
       }
 
       // Echo to sender for UI (only once)

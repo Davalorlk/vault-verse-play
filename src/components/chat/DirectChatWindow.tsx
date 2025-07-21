@@ -36,6 +36,18 @@ export const DirectChatWindow = ({ currentUser, friend, onCloseChat }: DirectCha
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Emit user-online on mount (ensures backend knows this user is online)
+  useEffect(() => {
+    if (currentUser?.uid) {
+      socket.emit('user-online', {
+        uid: currentUser.uid,
+        displayName: currentUser.displayName,
+        avatar: currentUser.avatar,
+        rank: currentUser.rank
+      });
+    }
+  }, [currentUser]);
+
   // Load messages from local storage on component mount or friend change
   useEffect(() => {
     const conversationKey = getConversationKey(currentUser.uid, friend.friend_uid);
