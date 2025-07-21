@@ -497,12 +497,15 @@ io.on('connection', (socket) => {
       const messages = pendingMessages.get(userInfo.uid);
       messages.forEach(msg => {
         io.to(socket.id).emit('receive-dm', msg);
-        io.to(socket.id).emit('new-notification', {
-          type: 'dm',
-          content: `New message from ${msg.sender_display_name || 'a friend'}: ${msg.content}`,
-          senderId: msg.sender_id,
-          timestamp: msg.timestamp
-        });
+          io.to(socket.id).emit('new-notification', {
+            type: 'dm',
+            content: `New message from ${msg.sender_display_name || 'a friend'}: ${msg.content}`,
+            senderId: msg.sender_id,
+            senderDisplayName: msg.sender_display_name,
+            senderAvatar: msg.sender_avatar,
+            relatedId: msg.sender_id,
+            timestamp: msg.timestamp
+          });
       });
       pendingMessages.delete(userInfo.uid);
     }
@@ -887,6 +890,9 @@ io.on('connection', (socket) => {
             type: 'dm',
             content: `New message from ${senderDisplayName || 'a friend'}: ${content}`,
             senderId: senderId,
+            senderDisplayName: senderDisplayName,
+            senderAvatar: senderAvatar,
+            relatedId: senderId,
             timestamp: newMessage.timestamp
           });
         });
@@ -899,8 +905,7 @@ io.on('connection', (socket) => {
         pendingMessages.get(receiverId).push(newMessage);
       }
 
-      // Echo to sender for UI (only once)
-      socket.emit('receive-dm', newMessage);
+      // Do not echo message back to sender
 
       console.log(`DM from ${senderId} to ${receiverId}: ${content}`);
     } catch (err) {

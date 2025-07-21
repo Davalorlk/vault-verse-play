@@ -49,18 +49,27 @@ export const NotificationList = ({ notifications, onMarkAsRead, onClearAll, onVi
                   onClick={() => onMarkAsRead(notification.id)}
                 >
                   <div className="flex-shrink-0">
-                    {notification.type === 'message' && <MessageSquare className="h-5 w-5 text-blue-400" />}
+                    {notification.type === 'dm' && <MessageSquare className="h-5 w-5 text-blue-400" />}
                     {notification.type === 'friend_request' && <UserPlus className="h-5 w-5 text-green-400" />}
                     {notification.type === 'mention' && <MessageSquare className="h-5 w-5 text-purple-400" />}
                   </div>
                   <div className="flex-1">
+                    {/* Show sender info for DM notifications */}
+                    {notification.type === 'dm' && (
+                      <div className="flex items-center space-x-2 mb-1">
+                        {notification.senderAvatar && (
+                          <img src={notification.senderAvatar} alt="avatar" className="w-6 h-6 rounded-full" />
+                        )}
+                        <span className="font-semibold">{notification.senderDisplayName || 'Unknown'}</span>
+                      </div>
+                    )}
                     <p className="font-semibold">{notification.title}</p>
                     <p className="text-sm">{notification.body}</p>
                     <span className="text-xs text-slate-500">
                       {new Date(notification.timestamp).toLocaleString()}
                     </span>
                   </div>
-                  {notification.type === 'message' && !notification.read && onViewMessage && (
+                  {notification.type === 'dm' && !notification.read && onViewMessage && (
                     <Button size="sm" variant="outline" onClick={() => onViewMessage(notification.senderId!)}>
                       View
                     </Button>
