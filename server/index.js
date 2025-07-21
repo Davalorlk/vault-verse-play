@@ -831,10 +831,30 @@ io.on('connection', (socket) => {
     socket.emit('chat-message', msg);
   });
 
+
   // Direct Messaging Events
   socket.on('send-dm', async ({ senderId, receiverId, content, senderDisplayName, senderAvatar }) => {
     try {
-      const newMessage = { sender_id: senderId, receiver_id: receiverId, content, timestamp: new Date().toISOString(), sender_display_name: senderDisplayName, sender_avatar: senderAvatar };
+      // Check if sender and receiver are friends
+      const [user1, user2] = senderId < receiverId ? [senderId, receiverId] : [receiverId, senderId];
+      const friendship = await pool.query(
+        `SELECT * FROM friends WHERE user_id1 = $1 AND user_id2 = $2 AND status = 'accepted'`,
+        [user1, user2]
+      );
+      if (friendship.rows.length === 0) {
+        socket.emit('dm-error', { error: 'You are not friends with this user.' });
+        return;
+      }
+
+      // Prepare message object (no DB storage)
+      const newMessage = {
+        sender_id: senderId,
+        receiver_id: receiverId,
+        content,
+        timestamp: new Date().toISOString(),
+        sender_display_name: senderDisplayName,
+        sender_avatar: senderAvatar
+      };
 
       // Find receiver's socket ID(s) from onlineUsers map
       const receiverSockets = Array.from(onlineUsers.entries())
@@ -846,12 +866,13 @@ io.on('connection', (socket) => {
         io.to(sockId).emit('receive-dm', newMessage);
       });
 
-      // Also emit to sender for immediate display (self-echo)
+      // Echo to sender for UI
       socket.emit('receive-dm', newMessage);
 
       console.log(`DM from ${senderId} to ${receiverId}: ${content}`);
     } catch (err) {
       console.error('Error sending DM:', err);
+      socket.emit('dm-error', { error: 'Failed to send message.' });
     }
   });
 
