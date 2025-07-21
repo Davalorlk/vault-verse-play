@@ -127,19 +127,17 @@ export const DirectChatWindow = ({ currentUser, friend, onCloseChat }: DirectCha
         {messages.map((msg, index) => (
           <div
             key={index}
-            className={`flex ${msg.sender_id === currentUser.uid ? 'justify-end' : 'justify-start'}`}
+            className={`flex ${msg.sender_id === currentUser.uid ? 'justify-end' : 'justify-start'} mb-2`}
           >
             <div
-              className={`max-w-[70%] p-3 rounded-lg ${
+              className={`rounded-lg px-4 py-2 max-w-xs ${
                 msg.sender_id === currentUser.uid
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-blue-500 text-white'
                   : 'bg-slate-700 text-white'
               }`}
             >
-              <p>{msg.content}</p>
-              <span className="text-xs opacity-75 mt-1 block">
-                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
+              {msg.content}
+              <div className="text-xs text-slate-300 mt-1">{new Date(msg.timestamp).toLocaleTimeString()}</div>
             </div>
           </div>
         ))}
