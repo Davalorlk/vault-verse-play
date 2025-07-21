@@ -167,7 +167,7 @@ export const Dashboard = ({ user, onLogout, initialTab = 'puzzles', onTabChange 
                 {user.avatar?.startsWith('http') ? (
                   <img src={user.avatar} alt="avatar" className="w-6 h-6 rounded-full" />
                 ) : (
-                  user.avatar || '👤'
+                  user.avatar || '/default-avatar.png'
                 )}
               </span>
               <span className="text-white font-semibold text-sm hidden sm:inline">{user.displayName || user.username}</span>

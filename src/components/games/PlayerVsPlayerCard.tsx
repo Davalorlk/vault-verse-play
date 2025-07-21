@@ -24,7 +24,7 @@ export function PlayerVsPlayerCard({ player, opponent, yourTurn, onAddFriend }: 
       {/* Player */}
       <div className="flex items-center gap-3">
         <Avatar>
-          <AvatarFallback>{player.avatar || '👤'}</AvatarFallback>
+          <AvatarFallback>{player.avatar ? player.avatar : <img src="/default-avatar.png" alt="avatar" />}</AvatarFallback>
         </Avatar>
         <div>
           <div className="text-white font-semibold text-base">{player.username} {player.isYou && <span className="text-xs text-yellow-400">(You)</span>}</div>
