@@ -488,6 +488,7 @@ io.on('connection', (socket) => {
   // Listen for user info (sent from client after connect)
   socket.on('user-online', (userInfo) => {
     onlineUsers.set(socket.id, userInfo);
+    console.log('Online users:', Array.from(onlineUsers.entries()));
     io.emit('presence-update', Array.from(onlineUsers.values()));
   });
 
@@ -861,12 +862,17 @@ io.on('connection', (socket) => {
         .filter(([sockId, userInfo]) => userInfo.uid === receiverId)
         .map(([sockId, userInfo]) => sockId);
 
+      console.log('Receiver sockets:', receiverSockets);
       // Emit to receiver if online
-      receiverSockets.forEach(sockId => {
-        io.to(sockId).emit('receive-dm', newMessage);
-      });
+      if (receiverSockets.length > 0) {
+        receiverSockets.forEach(sockId => {
+          io.to(sockId).emit('receive-dm', newMessage);
+        });
+      } else {
+        console.log('Receiver is not online:', receiverId);
+      }
 
-      // Echo to sender for UI
+      // Echo to sender for UI (only once)
       socket.emit('receive-dm', newMessage);
 
       console.log(`DM from ${senderId} to ${receiverId}: ${content}`);
