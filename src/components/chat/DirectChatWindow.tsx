@@ -88,16 +88,24 @@ export const DirectChatWindow = ({ currentUser, friend, onCloseChat }: DirectCha
     if (!newMessage.trim()) return;
 
     const messageData = {
+      sender_id: currentUser.uid,
+      receiver_id: friend.friend_uid,
+      content: newMessage.trim(),
+      timestamp: new Date().toISOString(),
+      sender_display_name: currentUser.displayName,
+      sender_avatar: currentUser.avatar
+    };
+
+    // Send with backend's expected property names
+    socket.emit('send-dm', {
       senderId: currentUser.uid,
       receiverId: friend.friend_uid,
       content: newMessage.trim(),
-      timestamp: new Date().toISOString(),
+      timestamp: messageData.timestamp,
       senderDisplayName: currentUser.displayName,
       senderAvatar: currentUser.avatar
-    };
+    });
 
-    socket.emit('send-dm', messageData);
-    
     // Optimistically add message to local state and storage
     setMessages((prevMessages) => {
       const updatedMessages = [...prevMessages, messageData];
